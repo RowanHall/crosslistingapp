@@ -1,0 +1,54 @@
+{
+    "manifest_version": 3,
+    "name": "Crosslisting App",
+    "version": "1.0",
+    "description": "Crosslist items between platforms",
+    "permissions": [
+        "sidePanel",
+        "activeTab",
+        "scripting",
+        "storage",
+        "cookies",
+        "webRequest",
+        "declarativeNetRequest"
+    ],
+    "host_permissions": [
+        "https://*.depop.com/*",
+        "https://*.poshmark.com/*",
+        "http://localhost:3000/*",
+        "https://webapi.depop.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.depop.com/*"
+            ],
+            "js": [
+                "scripts/bridge.js"
+            ]
+        },
+        {
+            "matches": [
+                "https://poshmark.com/create-listing"
+            ],
+            "js": [
+                "scripts/poshmark-filler.js"
+            ],
+            "run_at": "document_end"
+        },
+        {
+            "matches": [
+                "http://localhost:3000/*"
+            ],
+            "js": [
+                "scripts/content.js"
+            ]
+        }
+    ],
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    }
+}
