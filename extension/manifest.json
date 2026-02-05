@@ -16,7 +16,8 @@
         "https://*.depop.com/*",
         "https://*.poshmark.com/*",
         "http://localhost:3000/*",
-        "https://webapi.depop.com/*"
+        "https://webapi.depop.com/*",
+        "https://*.grailed.com/*"
     ],
     "background": {
         "service_worker": "background.js"
