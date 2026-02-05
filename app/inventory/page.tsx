@@ -4,6 +4,7 @@ import { InventoryGrid } from "@/components/dashboard/InventoryGrid";
 import { InventoryItem } from "@/components/dashboard/InventoryCard";
 import { createClient } from "@/utils/supabase/server";
 import { DepopSyncButton } from "@/components/dashboard/DepopSyncButton";
+import { GrailedSyncButton } from "@/components/dashboard/GrailedSyncButton";
 
 export default async function InventoryPage(props: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -55,7 +56,10 @@ export default async function InventoryPage(props: {
                 <h1 className="text-4xl font-black uppercase tracking-tighter mb-2">My Inventory</h1>
                 <p className="text-muted-foreground text-sm tracking-wide">MANAGE YOUR LISTINGS ACROSS ALL PLATFORMS</p>
             </div>
-            <DepopSyncButton />
+            <div className="flex gap-4">
+                <DepopSyncButton />
+                <GrailedSyncButton />
+            </div>
         </div>
         
         <FilterBar currentFilter={filter} />

@@ -1,31 +1,4 @@
-// // extension/scripts/content.js
-// console.log("Crosslisting App: Relay Script Loaded");
 
-// window.addEventListener("message", (event) => {
-//     // DEBUG: Log EVERY message this window receives to see if we catch the React one
-//     // (You will see many system messages here, look for yours)
-//     if (event.data && event.data.action) {
-//         console.log("Content Script saw message:", event.data);
-//     }
-
-//     // 1. We removed 'if (event.source !== window)' because of Isolated World conflicts
-
-//     // 2. Filter for your specific action
-//     if (event.data && event.data.action === "SYNC_DEPOP") {
-//         console.log("Content Script: Relay SYNC_DEPOP -> Background");
-
-//         chrome.runtime.sendMessage({ action: "SYNC_DEPOP" }, (response) => {
-//             console.log("Content Script: Response from Background:", response);
-//             window.postMessage({
-//                 action: "SYNC_COMPLETE",
-//                 payload: response
-//             }, "*");
-//         });
-//     }
-
-// });
-
-// extension/scripts/content.js
 console.log("Crosslisting App: Relay Script Loaded");
 
 // ============================================================================
@@ -40,13 +13,20 @@ window.addEventListener("message", (event) => {
     if (event.data && (event.data.action === "SYNC_DEPOP" || event.data.action === "SYNC_GRAILED")) {
         console.log(`Content Script: Saw ${event.data.action}, relaying to Background...`);
 
+        const originalAction = event.data.action;
+
         // Relay the message to the Background Service Worker
         chrome.runtime.sendMessage(event.data, (response) => {
             console.log("Content Script: Response from Background:", response);
 
+            // Determine specific completion action
+            let completionAction = "SYNC_COMPLETE"; // Fallback
+            if (originalAction === "SYNC_DEPOP") completionAction = "SYNC_COMPLETE_DEPOP";
+            if (originalAction === "SYNC_GRAILED") completionAction = "SYNC_COMPLETE_GRAILED";
+
             // Send the data back to the React Page
             window.postMessage({
-                action: "SYNC_COMPLETE",
+                action: completionAction,
                 payload: response
             }, "*");
         });

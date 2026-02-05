@@ -18,8 +18,8 @@ export function useDepopSync() {
             // Validate origin (security)
             if (event.source !== window) return;
 
-            // FIX 2: Listen for 'SYNC_COMPLETE' (This is what content.js sends back)
-            if (event.data?.action === "SYNC_COMPLETE") {
+
+            if (event.data?.action === "SYNC_COMPLETE_DEPOP") {
                 console.log("Hook: Received response!", event.data);
 
                 const { payload } = event.data;

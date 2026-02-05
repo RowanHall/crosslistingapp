@@ -17,8 +17,13 @@
         "https://*.poshmark.com/*",
         "http://localhost:3000/*",
         "https://webapi.depop.com/*",
-        "https://*.grailed.com/*"
+        "https://*.grailed.com/*",
+        "https://*.algolia.net/*",
+        "https://*.algolianet.com/*"
     ],
+    "action": {
+        "default_popup": "popup.html"
+    },
     "background": {
         "service_worker": "background.js"
     },
