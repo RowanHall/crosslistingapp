@@ -7,6 +7,7 @@ export interface InventoryItem {
   id: string;
   title: string;
   price: number;
+  currency: string;
   imageUrl: string;
   status: "draft" | "listed" | "sold";
   platforms: string[];
@@ -47,7 +48,7 @@ export function InventoryCard({ item }: InventoryCardProps) {
       </div>
       <CardContent className="p-3 space-y-1">
         <h3 className="font-bold text-sm tracking-tight uppercase truncate">{item.title}</h3>
-        <p className="text-sm text-muted-foreground font-mono">${item.price.toFixed(2)}</p>
+        <p className="text-sm text-muted-foreground font-mono">{item.currency === 'USD' ? '$' : ''}{item.price.toFixed(2)} {item.currency}</p>
       </CardContent>
     </Card>
     </Link>

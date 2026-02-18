@@ -45,7 +45,7 @@ export default async function ListingDetailPage(props: {
                         <div className="space-y-6">
                             <div className="p-6 border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                                 <h2 className="text-sm font-bold uppercase tracking-widest text-neutral-500 mb-1">Price</h2>
-                                <p className="text-4xl font-black tracking-tighter">${listing.price}</p>
+                                <p className="text-4xl font-black tracking-tighter">{listing.currency === 'USD' ? '$' : ''}{listing.price} {listing.currency}</p>
                             </div>
 
                             <div className="p-6 border-2 border-black rounded-lg">

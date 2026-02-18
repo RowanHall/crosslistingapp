@@ -36,6 +36,7 @@ export default async function InventoryPage(props: {
       id: item.id,
       title: item.title,
       price: item.price,
+      currency: item.currency || 'USD',
       imageUrl: item.images?.[0] || null,
       status: isListed ? 'listed' : 'draft', // Simplified logic
       platforms: platforms,
