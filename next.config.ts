@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'media-photos.depop.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'd2h1pu9tdskfs9.cloudfront.net', // Common Depop image host
         port: '',
         pathname: '/**',

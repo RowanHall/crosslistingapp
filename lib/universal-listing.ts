@@ -117,8 +117,10 @@ export class UniversalListing {
             id: String(data?.id || ''),
             title: title,
             description: data?.description || '',
-            price: parseFloat(data?.pricing?.original_price?.price_breakdown?.price?.amount) || null,
-            currency: data?.pricing?.original_price?.currency_code || 'USD',
+            price: parseFloat(data?.pricing?.original_price?.total_price)
+                || parseFloat(data?.pricing?.original_price?.price_breakdown?.price?.amount)
+                || null,
+            currency: data?.pricing?.currency_name || 'USD',
             images,
             condition: mapCondition(data?.condition),
             brand: null, // Depop brand extraction might need more specific logic if not in top level
