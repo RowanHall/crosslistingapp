@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
         hostname: 'd2h1pu9tdskfs9.cloudfront.net', // Common Depop image host
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'media-assets.grailed.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

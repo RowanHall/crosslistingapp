@@ -42,6 +42,16 @@ window.addEventListener("message", (event) => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Content Script received command:", request.type);
 
+    // --- PROGRESS RELAY ---
+    if (request.type === 'GRAILED_SYNC_PROGRESS') {
+        // Relay progress updates from background to the React page
+        window.postMessage({
+            action: 'GRAILED_SYNC_PROGRESS',
+            progress: request.progress
+        }, '*');
+        return;
+    }
+
     // --- DEPOP FETCH LOGIC ---
     if (request.type === 'EXECUTE_PAGE_FETCH') {
         // (If you have existing Depop fetch logic, it would go here. 

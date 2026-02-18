@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { Navbar } from "@/components/layout/Navbar";
 import { CrossPostButton } from "@/components/listing/CrossPostButton";
-import Image from "next/image";
+import { ImageGallery } from "@/components/listing/ImageGallery";
 import { notFound } from "next/navigation";
 
 export default async function ListingDetailPage(props: {
@@ -36,34 +36,10 @@ export default async function ListingDetailPage(props: {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Image Gallery */}
-                        <div className="space-y-4">
-                            <div className="aspect-square relative overflow-hidden rounded-lg border-2 border-black bg-neutral-100">
-                                {listing.images && listing.images[0] ? (
-                                    <Image
-                                        src={listing.images[0]}
-                                        alt={listing.title}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex items-center justify-center w-full h-full text-neutral-400">
-                                        No Image
-                                    </div>
-                                )}
-                            </div>
-                            <div className="grid grid-cols-4 gap-2">
-                                {listing.images?.slice(1).map((img: string, i: number) => (
-                                    <div key={i} className="aspect-square relative overflow-hidden rounded-lg border border-black bg-neutral-100">
-                                        <Image
-                                            src={img}
-                                            alt={`Gallery ${i}`}
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        <ImageGallery 
+                          images={listing.images || []} 
+                          title={listing.title} 
+                        />
 
                         {/* Details */}
                         <div className="space-y-6">
