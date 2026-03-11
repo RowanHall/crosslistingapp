@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 
 import { createListing } from "@/app/listing/actions";
 import { publishToEbay } from "@/actions/ebay";
-import { publishToDepop } from "@/actions/depop";
+
 import { useExtension } from "@/hooks/useExtension";
 
 export function MasterListingForm() {
@@ -100,11 +100,7 @@ export function MasterListingForm() {
           await publishToEbay(listingId);
       }
 
-      // 4. Publish to Depop if selected
-      if (store.platforms.includes('depop')) {
-          setStatusMessage("Publishing to Depop...");
-          await publishToDepop(listingId);
-      }
+      // Depop publishing is handled via the Chrome extension, not server-side
 
       setStatusMessage("Done!");
       // 4. Reset and Redirect

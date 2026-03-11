@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { Navbar } from "@/components/layout/Navbar";
 import { CrossPostButton } from "@/components/listing/CrossPostButton";
+import { FacebookCrosslistButton } from "@/components/listing/FacebookCrosslistButton";
+import { GrailedCrosslistButton } from "@/components/listing/GrailedCrosslistButton";
 import { ImageGallery } from "@/components/listing/ImageGallery";
 import { notFound } from "next/navigation";
 
@@ -31,6 +33,16 @@ export default async function ListingDetailPage(props: {
                         <h1 className="text-3xl font-black uppercase tracking-tighter">{listing.title}</h1>
                         <div className="flex gap-4">
                             <CrossPostButton listing={listing} />
+                            <FacebookCrosslistButton
+                                listingId={listing.id}
+                                alreadyListed={listing.platforms_status?.facebook === 'listed'}
+                                existingUrl={listing.facebook_listing_url ?? null}
+                            />
+                            <GrailedCrosslistButton
+                                listingId={listing.id}
+                                alreadyListed={listing.platforms_status?.grailed === 'listed'}
+                                existingUrl={listing.grailed_listing_url ?? null}
+                            />
                         </div>
                     </div>
 

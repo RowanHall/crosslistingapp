@@ -19,7 +19,8 @@
         "https://webapi.depop.com/*",
         "https://*.grailed.com/*",
         "https://*.algolia.net/*",
-        "https://*.algolianet.com/*"
+        "https://*.algolianet.com/*",
+        "https://*.facebook.com/*"
     ],
     "action": {
         "default_popup": "popup.html"
@@ -47,11 +48,25 @@
         },
         {
             "matches": [
+                "https://www.depop.com/products/create/*"
+            ],
+            "js": [
+                "scripts/depop-filler.js"
+            ],
+            "run_at": "document_end"
+        },
+        {
+            "matches": [
                 "http://localhost:3000/*"
             ],
             "js": [
                 "scripts/content.js"
             ]
+        },
+        {
+            "matches": ["https://www.facebook.com/*"],
+            "js": ["scripts/facebook-scraper.js"],
+            "run_at": "document_idle"
         }
     ],
     "side_panel": {

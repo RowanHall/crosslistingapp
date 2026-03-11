@@ -34,41 +34,68 @@ chrome.webRequest.onHeadersReceived.addListener(
 );
 
 
-// --- 2. GRAILED SNIFFER (Cookie Strategy) ---
-// Captures JWT from Cookie AND extracts User ID
+// --- 2. GRAILED SNIFFER (Cookie + CSRF Strategy) ---
+// Captures JWT, full cookie blob, and x-csrf-token from outgoing Grailed requests.
+// The CSRF token is captured directly from real requests (most reliable approach).
 chrome.webRequest.onBeforeSendHeaders.addListener(
     (details) => {
-        const cookieHeader = details.requestHeaders.find(h => h.name.toLowerCase() === 'cookie');
+        const headers = details.requestHeaders;
+        const cookieHeader = headers.find(h => h.name.toLowerCase() === 'cookie');
+        const csrfHeader = headers.find(h => h.name.toLowerCase() === 'x-csrf-token');
+
+        // Always capture the CSRF token when we see it (from any POST to Grailed)
+        if (csrfHeader && csrfHeader.value) {
+            chrome.storage.local.get(['grailed_csrf_token'], (data) => {
+                if (data.grailed_csrf_token !== csrfHeader.value) {
+                    console.log("Background: New Grailed CSRF token captured");
+                    chrome.storage.local.set({ grailed_csrf_token: csrfHeader.value });
+
+                    // Push updated CSRF token to backend if we already have credentials
+                    chrome.storage.local.get(['grailed_cookies', 'grailed_user_id', 'grailed_device_id'], (creds) => {
+                        if (creds.grailed_cookies && creds.grailed_user_id) {
+                            sendGrailedCredsToBackend(creds.grailed_cookies, creds.grailed_user_id, creds.grailed_device_id, csrfHeader.value);
+                        }
+                    });
+                }
+            });
+        }
 
         if (cookieHeader && cookieHeader.value) {
-            // Regex: Find "grailed_jwt=" followed by "eyJ" until a semicolon or end of string
-            const matches = cookieHeader.value.match(/grailed_jwt=(eyJ[^;]+)/);
+            const fullCookies = cookieHeader.value;
+            const matches = fullCookies.match(/grailed_jwt=(eyJ[^;]+)/);
 
             if (matches && matches[1]) {
                 const token = matches[1];
                 const fullToken = `Bearer ${token}`;
 
-                // Check if it's new before processing
-                console.log("Background: Found Grailed Token, might be new");
-                chrome.storage.local.get(['grailed_token'], (data) => {
-                    if (data.grailed_token !== fullToken) {
-                        console.log("Background: New Grailed Token detected!");
+                chrome.storage.local.get(['grailed_token', 'grailed_cookies', 'grailed_device_id', 'grailed_csrf_token'], (data) => {
+                    const tokenChanged = data.grailed_token !== fullToken;
+                    const cookiesChanged = data.grailed_cookies !== fullCookies;
 
-                        // Decode JWT to get User ID
+                    if (tokenChanged || cookiesChanged) {
+                        console.log("Background: New Grailed credentials detected!");
+
                         const payload = parseJwt(token);
-                        if (payload && (payload.sub || payload.id || payload.user_id)) {
-                            // Grailed usually uses 'sub' or 'id' for the user identifier
-                            const userId = payload.sub || payload.id || payload.user_id;
-                            console.log(`Background: Extracted Grailed User ID: ${userId}`);
+                        const userId = payload && (payload.sub || payload.id || payload.user_id);
 
-                            chrome.storage.local.set({
-                                grailed_token: fullToken,
-                                grailed_user_id: userId
-                            });
+                        if (userId) {
+                            console.log(`Background: Extracted Grailed User ID: ${userId}`);
                         } else {
                             console.warn("Background: Could not extract User ID from Grailed JWT");
-                            // Still save the token just in case
-                            chrome.storage.local.set({ grailed_token: fullToken });
+                        }
+
+                        const deviceId = data.grailed_device_id || crypto.randomUUID();
+                        const csrfToken = csrfHeader?.value || data.grailed_csrf_token || null;
+
+                        chrome.storage.local.set({
+                            grailed_token: fullToken,
+                            grailed_user_id: userId || data.grailed_user_id,
+                            grailed_cookies: fullCookies,
+                            grailed_device_id: deviceId,
+                        });
+
+                        if (userId) {
+                            sendGrailedCredsToBackend(fullCookies, userId, deviceId, csrfToken);
                         }
                     }
                 });
@@ -78,6 +105,23 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     { urls: ["https://*.grailed.com/*"] },
     ["requestHeaders", "extraHeaders"]
 );
+
+function sendGrailedCredsToBackend(cookies, userId, deviceId, csrfToken) {
+    fetch('http://localhost:3000/api/integrations/grailed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ cookies, user_id: userId, device_id: deviceId, csrf_token: csrfToken })
+    }).then(resp => {
+        if (resp.ok) {
+            console.log("Background: Grailed credentials saved to backend");
+        } else {
+            resp.text().then(t => console.error("Background: Failed to save Grailed credentials:", resp.status, t));
+        }
+    }).catch(err => {
+        console.error("Background: Network error saving Grailed credentials:", err.message);
+    });
+}
 
 
 // --- 3. ALGOLIA SNIFFER (Key Strategy) ---
@@ -111,9 +155,95 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 );
 
 
-// --- 4. MESSAGE ROUTER ---
+// --- 4. FACEBOOK SNIFFER ---
+// Captures the full cookie blob from outgoing FB requests.
+// httpOnly cookies (xs, fr) are NOT accessible via document.cookie but ARE
+// visible in request headers at the network level — this is how we capture them.
+chrome.webRequest.onBeforeSendHeaders.addListener(
+    (details) => {
+        const cookieHeader = details.requestHeaders.find(h => h.name.toLowerCase() === 'cookie');
+        if (cookieHeader && cookieHeader.value) {
+            chrome.storage.local.get(['fb_session_cookies'], (data) => {
+                if (data.fb_session_cookies !== cookieHeader.value) {
+                    console.log("Background: Saved Facebook session cookies");
+                    chrome.storage.local.set({ fb_session_cookies: cookieHeader.value });
+                }
+            });
+        }
+    },
+    { urls: ["https://*.facebook.com/*"] },
+    ["requestHeaders", "extraHeaders"]
+);
+
+
+// --- 5. MESSAGE ROUTER ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background: Received action:", request.action);
+
+    if (request.action === 'SAVE_FACEBOOK_TOKENS') {
+        chrome.storage.local.set({
+            fb_dtsg: request.fb_dtsg,
+            fb_lsd: request.lsd,
+            fb_user_id: request.c_user
+        }, () => {
+            const preview = (v) => v ? `${v.slice(0, 6)}…(${v.length})` : "missing";
+            console.log("Background: Saved Facebook tokens", {
+                fb_dtsg: preview(request.fb_dtsg),
+                fb_lsd: preview(request.lsd),
+                fb_user_id: request.c_user || "missing"
+            });
+
+            // Now POST the tokens to the Next.js backend (matching Depop/Grailed pattern)
+            chrome.storage.local.get(['fb_session_cookies'], async (data) => {
+                const payload = {
+                    fb_dtsg: request.fb_dtsg,
+                    lsd: request.lsd,
+                    cookies: data.fb_session_cookies || null,
+                    user_id: request.c_user || null
+                };
+                console.log("Background: Sending Facebook tokens to backend...", {
+                    fb_dtsg: preview(request.fb_dtsg),
+                    lsd: preview(request.lsd),
+                    cookies: data.fb_session_cookies ? `present (${data.fb_session_cookies.length} chars)` : "missing",
+                    user_id: request.c_user || "missing"
+                });
+
+                try {
+                    const resp = await fetch('http://localhost:3000/api/integrations/facebook', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (resp.ok) {
+                        const result = await resp.json();
+                        console.log("Background: Successfully sent Facebook tokens to backend", result);
+                    } else {
+                        const errText = await resp.text();
+                        console.error(`Background: Failed to send Facebook tokens to backend: ${resp.status}`, errText);
+                    }
+                } catch (err) {
+                    console.error("Background: Network error sending Facebook tokens to backend:", err.message);
+                }
+            });
+        });
+        return false;
+    }
+
+    if (request.action === 'SYNC_FACEBOOK') {
+        chrome.storage.local.get(['fb_dtsg', 'fb_lsd', 'fb_user_id', 'fb_session_cookies'], (data) => {
+            const preview = (v) => v ? `${v.slice(0, 6)}…(${v.length})` : "missing";
+            console.log("Background: SYNC_FACEBOOK — returning credentials", {
+                fb_dtsg: preview(data.fb_dtsg),
+                fb_lsd: preview(data.fb_lsd),
+                fb_user_id: data.fb_user_id || "missing",
+                fb_session_cookies: data.fb_session_cookies ? `present (${data.fb_session_cookies.length} chars)` : "missing"
+            });
+            sendResponse({ success: true, credentials: data });
+        });
+        return true; // Keep channel open for async storage.get
+    }
 
     if (request.action === 'SYNC_DEPOP') {
         handleDepopSync(sendResponse);
@@ -128,6 +258,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'FETCH_GRAILED_DATA') {
         handleGrailedSync(sendResponse, sender?.tab?.id);
         return true; // Keep channel open
+    }
+
+    if (request.action === 'CROSSLIST_DEPOP') {
+        handleDepopCrosslist(request.listings, sender?.tab?.id);
+        sendResponse({ received: true });
+        return true;
+    }
+
+    if (request.action === 'DEPOP_POST_COMPLETE') {
+        console.log(`Background: Depop post complete: "${request.listingTitle}" success=${request.success} error=${request.error || 'none'}`);
+        if (request.stepLog && request.stepLog.length > 0) {
+            console.log('Background: === Filler Step Log ===');
+            request.stepLog.forEach(s => console.log('  ' + s));
+            console.log('Background: === End Step Log ===');
+        }
+        processNextDepopListing(request.success, request.error);
+        return false;
     }
 });
 
@@ -147,7 +294,7 @@ function sendProgressToTab(tabId, progress) {
 }
 
 
-// --- 5. PHOTO ENRICHMENT ---
+// --- 6. PHOTO ENRICHMENT ---
 
 /**
  * Fetches the listing page HTML from grailed.com and extracts photos + description.
@@ -296,7 +443,7 @@ async function enrichListingsWithPhotos(hits, tabId) {
 }
 
 
-// --- 6. HANDLERS ---
+// --- 7. HANDLERS ---
 
 async function handleDepopSync(sendResponse) {
     console.log("Background: Starting Depop Sync...");
@@ -423,4 +570,98 @@ async function handleGrailedSync(sendResponse, tabId) {
         console.error("Grailed Sync Error:", e);
         sendResponse({ success: false, error: e.message });
     }
+}
+
+// --- 8. DEPOP CROSSLIST QUEUE ---
+let depopCrosslistState = {
+    queue: [],
+    results: [],
+    originTabId: null,
+    currentDepopTabId: null
+};
+
+async function handleDepopCrosslist(listings, tabId) {
+    console.log(`Background: Starting Depop crosslist for ${listings.length} listings`);
+    depopCrosslistState = {
+        queue: [...listings],
+        results: [],
+        originTabId: tabId,
+        currentDepopTabId: null
+    };
+    processNextDepopListing(null, null); // Start first one
+}
+
+async function processNextDepopListing(lastSuccess, lastError) {
+    // Record result of previous listing (if any)
+    if (lastSuccess !== null) {
+        depopCrosslistState.results.push({ success: lastSuccess, error: lastError });
+    }
+
+    // Close previous Depop tab
+    if (depopCrosslistState.currentDepopTabId) {
+        try {
+            await chrome.tabs.remove(depopCrosslistState.currentDepopTabId);
+        } catch (e) {
+            console.warn('Background: Could not close Depop tab:', e.message);
+        }
+        depopCrosslistState.currentDepopTabId = null;
+    }
+
+    // Send progress to origin tab
+    const completed = depopCrosslistState.results.length;
+    const total = completed + depopCrosslistState.queue.length;
+
+    if (depopCrosslistState.originTabId) {
+        sendProgressToTab(depopCrosslistState.originTabId, {
+            phase: 'crosslisting',
+            current: completed,
+            total: total,
+            message: depopCrosslistState.queue.length > 0
+                ? `Posted ${completed}/${total}. Processing next...`
+                : `Done! Posted ${completed}/${total} listings.`
+        });
+    }
+
+    // Check if queue is empty
+    if (depopCrosslistState.queue.length === 0) {
+        console.log('Background: Depop crosslist queue empty. All done!');
+        // Notify the origin tab
+        if (depopCrosslistState.originTabId) {
+            try {
+                chrome.tabs.sendMessage(depopCrosslistState.originTabId, {
+                    type: 'CROSSLIST_DEPOP_DONE',
+                    results: depopCrosslistState.results,
+                    total: total,
+                    successCount: depopCrosslistState.results.filter(r => r.success).length
+                });
+            } catch (e) {
+                console.warn('Background: Could not notify origin tab:', e.message);
+            }
+        }
+        // Clear storage
+        chrome.storage.local.remove('depop_crosslist_current');
+        return;
+    }
+
+    // Pop next listing
+    const nextListing = depopCrosslistState.queue.shift();
+    console.log(`Background: Processing listing: "${nextListing.title}" (${depopCrosslistState.queue.length} remaining)`);
+
+    // Store current listing for the filler script to read
+    await chrome.storage.local.set({ depop_crosslist_current: nextListing });
+
+    // Open Depop create page
+    const tab = await chrome.tabs.create({
+        url: 'https://www.depop.com/products/create/',
+        active: false // Keep in background
+    });
+    depopCrosslistState.currentDepopTabId = tab.id;
+
+    // Safety timeout: if filler doesn't respond within 60s, skip this listing
+    setTimeout(() => {
+        if (depopCrosslistState.currentDepopTabId === tab.id) {
+            console.warn(`Background: Listing "${nextListing.title}" timed out. Skipping.`);
+            processNextDepopListing(false, 'Timed out');
+        }
+    }, 60000);
 }

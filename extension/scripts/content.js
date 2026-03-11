@@ -10,7 +10,7 @@ window.addEventListener("message", (event) => {
     if (event.source !== window) return;
 
     // DEBUG: Log specific actions we care about
-    if (event.data && (event.data.action === "SYNC_DEPOP" || event.data.action === "SYNC_GRAILED")) {
+    if (event.data && (event.data.action === "SYNC_DEPOP" || event.data.action === "SYNC_GRAILED" || event.data.action === "SYNC_FACEBOOK")) {
         console.log(`Content Script: Saw ${event.data.action}, relaying to Background...`);
 
         const originalAction = event.data.action;
@@ -23,12 +23,21 @@ window.addEventListener("message", (event) => {
             let completionAction = "SYNC_COMPLETE"; // Fallback
             if (originalAction === "SYNC_DEPOP") completionAction = "SYNC_COMPLETE_DEPOP";
             if (originalAction === "SYNC_GRAILED") completionAction = "SYNC_COMPLETE_GRAILED";
+            if (originalAction === "SYNC_FACEBOOK") completionAction = "SYNC_COMPLETE_FACEBOOK";
 
             // Send the data back to the React Page
             window.postMessage({
                 action: completionAction,
                 payload: response
             }, "*");
+        });
+    }
+
+    // --- CROSSLIST DEPOP RELAY ---
+    if (event.data && event.data.action === 'CROSSLIST_DEPOP') {
+        console.log('Content Script: Saw CROSSLIST_DEPOP, relaying to Background...');
+        chrome.runtime.sendMessage(event.data, (response) => {
+            console.log('Content Script: CROSSLIST_DEPOP acknowledged:', response);
         });
     }
 });
@@ -44,10 +53,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // --- PROGRESS RELAY ---
     if (request.type === 'GRAILED_SYNC_PROGRESS') {
-        // Relay progress updates from background to the React page
         window.postMessage({
             action: 'GRAILED_SYNC_PROGRESS',
             progress: request.progress
+        }, '*');
+        return;
+    }
+
+    // --- CROSSLIST DEPOP PROGRESS RELAY ---
+    if (request.type === 'CROSSLIST_DEPOP_PROGRESS') {
+        window.postMessage({
+            action: 'CROSSLIST_DEPOP_PROGRESS',
+            progress: request.progress
+        }, '*');
+        return;
+    }
+
+    // --- CROSSLIST DEPOP DONE RELAY ---
+    if (request.type === 'CROSSLIST_DEPOP_DONE') {
+        window.postMessage({
+            action: 'CROSSLIST_DEPOP_DONE',
+            results: request.results,
+            total: request.total,
+            successCount: request.successCount
         }, '*');
         return;
     }

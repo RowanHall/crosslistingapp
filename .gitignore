@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# scratch / reverse-engineering files (may contain hardcoded secrets)
+/tmp/
+
+# claude code CLI
+.claude/
+CLOUDE.md
+
 # vercel
 .vercel
 
