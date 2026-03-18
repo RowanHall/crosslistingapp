@@ -33,6 +33,12 @@ const nextConfig: NextConfig = {
         hostname: 'media-assets.grailed.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.fbcdn.net',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

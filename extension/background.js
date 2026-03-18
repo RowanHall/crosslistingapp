@@ -3,6 +3,8 @@ console.log("Background Service Worker loaded [Triple Sniff Edition]");
 
 // --- 0. HELPERS ---
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Basic JWT Decoder (Base64Url -> JSON)
 function parseJwt(token) {
     try {
@@ -181,31 +183,52 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("Background: Received action:", request.action);
 
     if (request.action === 'SAVE_FACEBOOK_TOKENS') {
-        chrome.storage.local.set({
+        const toSave = {
             fb_dtsg: request.fb_dtsg,
             fb_lsd: request.lsd,
-            fb_user_id: request.c_user
-        }, () => {
+            fb_user_id: request.c_user,
+        };
+        // Persist optional session metadata only when present (avoid clobbering with null)
+        if (request.fb_rev) toSave.fb_rev = request.fb_rev;
+        if (request.fb_hs)  toSave.fb_hs  = request.fb_hs;
+        if (request.fb_dyn) toSave.fb_dyn = request.fb_dyn;
+        if (request.fb_csr) toSave.fb_csr = request.fb_csr;
+
+        chrome.storage.local.set(toSave, () => {
             const preview = (v) => v ? `${v.slice(0, 6)}…(${v.length})` : "missing";
             console.log("Background: Saved Facebook tokens", {
                 fb_dtsg: preview(request.fb_dtsg),
                 fb_lsd: preview(request.lsd),
-                fb_user_id: request.c_user || "missing"
+                fb_user_id: request.c_user || "missing",
+                fb_rev: request.fb_rev || "missing",
+                fb_hs: preview(request.fb_hs),
+                fb_dyn: preview(request.fb_dyn),
+                fb_csr: preview(request.fb_csr),
             });
 
-            // Now POST the tokens to the Next.js backend (matching Depop/Grailed pattern)
+            // POST tokens to the Next.js backend — only when both CSRF tokens are present
+            if (!request.fb_dtsg || !request.lsd) {
+                console.log("Background: Skipping backend POST — fb_dtsg or lsd not captured yet");
+                return;
+            }
+
             chrome.storage.local.get(['fb_session_cookies'], async (data) => {
                 const payload = {
                     fb_dtsg: request.fb_dtsg,
                     lsd: request.lsd,
                     cookies: data.fb_session_cookies || null,
-                    user_id: request.c_user || null
+                    user_id: request.c_user || null,
+                    fb_dyn: request.fb_dyn || null,
+                    fb_csr: request.fb_csr || null,
                 };
+                const preview = (v) => v ? `${v.slice(0, 6)}…(${v.length})` : "missing";
                 console.log("Background: Sending Facebook tokens to backend...", {
                     fb_dtsg: preview(request.fb_dtsg),
                     lsd: preview(request.lsd),
                     cookies: data.fb_session_cookies ? `present (${data.fb_session_cookies.length} chars)` : "missing",
-                    user_id: request.c_user || "missing"
+                    user_id: request.c_user || "missing",
+                    fb_dyn: preview(request.fb_dyn),
+                    fb_csr: preview(request.fb_csr),
                 });
 
                 try {
@@ -232,17 +255,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.action === 'SYNC_FACEBOOK') {
-        chrome.storage.local.get(['fb_dtsg', 'fb_lsd', 'fb_user_id', 'fb_session_cookies'], (data) => {
-            const preview = (v) => v ? `${v.slice(0, 6)}…(${v.length})` : "missing";
-            console.log("Background: SYNC_FACEBOOK — returning credentials", {
-                fb_dtsg: preview(data.fb_dtsg),
-                fb_lsd: preview(data.fb_lsd),
-                fb_user_id: data.fb_user_id || "missing",
-                fb_session_cookies: data.fb_session_cookies ? `present (${data.fb_session_cookies.length} chars)` : "missing"
-            });
-            sendResponse({ success: true, credentials: data });
-        });
-        return true; // Keep channel open for async storage.get
+        handleFacebookSync(sendResponse, sender?.tab?.id);
+        return true; // Keep channel open for async work
     }
 
     if (request.action === 'SYNC_DEPOP') {
@@ -572,7 +586,339 @@ async function handleGrailedSync(sendResponse, tabId) {
     }
 }
 
-// --- 8. DEPOP CROSSLIST QUEUE ---
+// --- 8. FACEBOOK MARKETPLACE IMPORT ---
+
+/**
+ * Derives Facebook's "jazoest" anti-CSRF value from fb_dtsg.
+ * Algorithm: sum the char codes of fb_dtsg, prepend "2".
+ */
+function computeJazoest(fbDtsg) {
+    let sum = 0;
+    for (const char of fbDtsg) sum += char.charCodeAt(0);
+    return `2${sum}`;
+}
+
+/**
+ * Facebook sends NDJSON (newline-delimited JSON) with a "for (;;);" prefix on
+ * the first chunk as a CSRF guard. Splits on newlines, strips the prefix, and
+ * returns an array of parsed objects. Tolerates malformed chunks.
+ */
+function parseFBNDJSON(text) {
+    const results = [];
+    for (const rawChunk of text.trim().split('\n')) {
+        let chunk = rawChunk.trim();
+        if (!chunk) continue;
+        if (chunk.startsWith('for (;;);')) chunk = chunk.slice('for (;;);'.length);
+        try {
+            results.push(JSON.parse(chunk));
+        } catch (e) {
+            console.warn('Background: FB — skipping unparseable NDJSON chunk:', chunk.slice(0, 120));
+        }
+    }
+    return results;
+}
+
+/**
+ * Normalizes a raw Facebook listing node into a flat, app-friendly object.
+ * Only the fields we actually use are extracted; all status flags are preserved.
+ */
+function normalizeFBListing(node) {
+    return {
+        id: node.id,
+        title: node.marketplace_listing_title
+            || node.base_marketplace_listing_title
+            || 'Untitled',
+        price: node.listing_price?.formatted_amount
+            || node.formatted_price?.text
+            || null,
+        imageUrl: node.primary_listing_photo?.image?.uri || null,
+        url: node.share_uri
+            || `https://www.facebook.com/marketplace/item/${node.id}/`,
+        createdAt: node.creation_time
+            ? new Date(node.creation_time * 1000).toISOString()
+            : null,
+        isSold: node.is_sold || false,
+        isLive: node.is_live || false,
+        views: node.listing_insights?.insights?.[0]?.count || 0,
+        platform: 'facebook',
+    };
+}
+
+/**
+ * Fetches one page of active Facebook Marketplace listings via the private
+ * Relay pagination query.
+ *
+ * @param {object} creds  - Stored credentials from chrome.storage.local
+ * @param {string|null} cursor - Relay cursor for pagination (null = first page)
+ * @returns {{ edges: Array, pageInfo: { has_next_page: boolean, end_cursor: string|null } }}
+ */
+async function fetchFBMarketplacePage(creds, cursor) {
+    const { fb_dtsg, fb_lsd, fb_user_id, fb_session_cookies, fb_rev, fb_hs } = creds;
+
+    const variables = {
+        count: 10,
+        cursor: cursor || null,
+        order: 'CREATION_TIMESTAMP_DESC',
+        scale: 2,
+        state: null,
+        status: null,
+        title_search: null,
+        // Relay provider flag observed in all captured requests
+        '__relay_internal__pv__ShouldUpdateMarketplaceBoostListingBoostedStatusrelayprovider': false,
+    };
+
+    const rev = fb_rev || '1034954086'; // Fallback — will work until FB deploys
+    const spinT = String(Math.floor(Date.now() / 1000));
+    const jazoest = computeJazoest(fb_dtsg);
+
+    const params = new URLSearchParams({
+        doc_id: '25446537771690810',
+        variables: JSON.stringify(variables),
+        fb_api_req_friendly_name: 'MarketplaceYouSellingFastActiveSectionPaginationQuery',
+        fb_api_caller_class: 'RelayModern',
+        server_timestamps: 'true',
+        __user: fb_user_id || '',
+        __a: '1',
+        fb_dtsg,
+        lsd: fb_lsd,
+        jazoest,
+        av: fb_user_id || '',
+        __rev: rev,
+        __spin_r: rev,
+        __spin_b: 'trunk',
+        __spin_t: spinT,
+        dpr: '2',
+        __comet_req: '15',
+    });
+
+    if (fb_hs) params.set('__hs', fb_hs);
+
+    const response = await fetch('https://www.facebook.com/api/graphql/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cookie': fb_session_cookies,
+            'X-FB-LSD': fb_lsd,
+            'X-FB-Friendly-Name': 'MarketplaceYouSellingFastActiveSectionPaginationQuery',
+            'X-ASBD-ID': '359341',
+            'Origin': 'https://www.facebook.com',
+            'Referer': 'https://www.facebook.com/marketplace/you/selling',
+            // FB validates these sec-fetch-* headers — omitting them causes error 1357054
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+        },
+        body: params.toString(),
+    });
+
+    if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`FB GraphQL HTTP ${response.status}: ${errText.slice(0, 200)}`);
+    }
+
+    const text = await response.text();
+    const chunks = parseFBNDJSON(text);
+
+    if (chunks.length === 0) {
+        throw new Error('FB returned an empty or unparseable response');
+    }
+
+    // Chunk 0 — main listing data
+    const mainChunk = chunks[0];
+    console.log('Background: FB raw first chunk:', JSON.stringify(mainChunk).slice(0, 500));
+
+    // Detect FB error responses.
+    // FB error can be a plain number ({"error":1,"errorDescription":"..."}),
+    // an object ({"error":{"code":1357054,"message":"..."}}), or a GraphQL errors array.
+    if (mainChunk?.error !== undefined && mainChunk?.error !== null) {
+        const err = mainChunk.error;
+        const code = typeof err === 'object' ? (err.code ?? err.type ?? '') : err;
+        const msg  = typeof err === 'object'
+            ? (err.message ?? err.errorDescription ?? JSON.stringify(err))
+            : (mainChunk.errorDescription ?? mainChunk.errorSummary ?? String(err));
+        throw new Error(`FB API error ${code}: ${msg}`);
+    }
+    if (mainChunk?.errors?.length) {
+        throw new Error(`FB GraphQL error: ${mainChunk.errors[0]?.message}`);
+    }
+
+    const edges = mainChunk?.data?.viewer?.marketplace_listing_sets?.edges || [];
+
+    // Deferred chunk — pagination info (sent as a second NDJSON line)
+    let pageInfo = { has_next_page: false, end_cursor: null };
+    for (const chunk of chunks.slice(1)) {
+        if (chunk?.data?.page_info) {
+            pageInfo = chunk.data.page_info;
+            break;
+        }
+        // Sometimes nested under a path-keyed label
+        if (chunk?.data && typeof chunk.data === 'object') {
+            const nested = Object.values(chunk.data).find(v => v?.page_info);
+            if (nested) { pageInfo = nested.page_info; break; }
+        }
+    }
+
+    return { edges, pageInfo };
+}
+
+/**
+ * Sequentially enriches a list of base FB listings with high-res images,
+ * description, and condition by calling FETCH_SINGLE_FB_LISTING on the
+ * content script running in the FB tab.
+ *
+ * @param {object[]} baseListings  Normalised listings from fetchAllFBListings
+ * @param {number}   tabId         The Facebook tab hosting the content script
+ * @param {object}   tokens        Stored FB credentials to pass as fallback
+ * @param {number}   originTabId   The X-LIST UI tab to send progress updates to
+ * @returns {object[]}             Listings with images/description/condition merged in
+ */
+async function enrichFBListings(baseListings, tabId, tokens, originTabId) {
+    for (let i = 0; i < baseListings.length; i++) {
+        const listing = baseListings[i];
+
+        sendProgressToTab(originTabId, {
+            phase: 'enriching',
+            current: i + 1,
+            total: baseListings.length,
+            message: `Fetching high-res photos ${i + 1}/${baseListings.length}...`,
+        });
+
+        try {
+            const result = await new Promise((resolve) => {
+                chrome.tabs.sendMessage(tabId, {
+                    action: 'FETCH_SINGLE_FB_LISTING',
+                    listingId: listing.id,
+                    tokens,
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        console.warn(`Background: enrichFBListings relay error for ${listing.id}:`, chrome.runtime.lastError.message);
+                        resolve(null);
+                    } else {
+                        resolve(response);
+                    }
+                });
+            });
+
+            if (result?.success) {
+                if (result.description)          listing.description = result.description;
+                if (result.condition)            listing.condition   = result.condition;
+                if (result.imageUrls?.length)    listing.images      = result.imageUrls;
+                console.log(
+                    `Background: enriched [${i + 1}/${baseListings.length}] "${listing.title}" — ` +
+                    `${result.imageUrls?.length ?? 0} images, desc: ${!!result.description}, condition: ${result.condition || 'none'}`
+                );
+            } else {
+                console.warn(`Background: enrichFBListings failed for listing ${listing.id}:`, result?.error);
+            }
+        } catch (e) {
+            console.error(`Background: enrichFBListings exception for listing ${listing.id}:`, e.message);
+        }
+
+        // Randomised delay between requests to avoid rate-limiting (skip after last)
+        if (i < baseListings.length - 1) {
+            const delay = 1500 + Math.random() * 1500; // 1500–3000 ms
+            console.log(`Background: enrichFBListings waiting ${Math.round(delay)}ms…`);
+            await sleep(delay);
+        }
+    }
+
+    return baseListings;
+}
+
+/**
+ * Delegates the paginated Marketplace fetch to the facebook-scraper content script
+ * running inside an open Facebook tab.
+ *
+ * Fetching from the service worker triggers error 1357004 because FB detects the
+ * request didn't originate from a real browser window. Running inside the tab means
+ * credentials:'include' attaches all cookies natively and sec-fetch headers are
+ * set correctly by the browser.
+ */
+async function handleFacebookSync(sendResponse, originTabId) {
+    console.log('Background: Starting Facebook Marketplace sync (tab-relay mode)...');
+
+    try {
+        const creds = await chrome.storage.local.get([
+            'fb_dtsg', 'fb_lsd', 'fb_user_id', 'fb_rev', 'fb_hs', 'fb_dyn', 'fb_csr',
+        ]);
+
+        // Find any open Facebook tab to host the fetch
+        const tabs = await chrome.tabs.query({ url: '*://*.facebook.com/*' });
+        if (tabs.length === 0) {
+            sendResponse({
+                success: false,
+                error: 'No Facebook tab found. Please open facebook.com and try again.',
+            });
+            return;
+        }
+
+        const tabId = tabs[0].id;
+        console.log(`Background: Relaying FB fetch to tab ${tabId} (${tabs[0].url?.slice(0, 60)})`);
+
+        const tokens = {
+            fb_dtsg: creds.fb_dtsg,
+            lsd:     creds.fb_lsd,
+            c_user:  creds.fb_user_id,
+            fb_rev:  creds.fb_rev,
+            fb_hs:   creds.fb_hs,
+            fb_dyn:  creds.fb_dyn,
+            fb_csr:  creds.fb_csr,
+        };
+
+        // Phase 1: paginated base fetch (title, price, cover image, id)
+        sendProgressToTab(originTabId, {
+            phase: 'fetching',
+            current: 0,
+            total: 0,
+            message: 'Fetching your listings...',
+        });
+
+        const baseResult = await new Promise((resolve) => {
+            chrome.tabs.sendMessage(tabId, { action: 'EXECUTE_FB_FETCH', tokens }, (response) => {
+                if (chrome.runtime.lastError) {
+                    resolve({ success: false, error: chrome.runtime.lastError.message });
+                } else {
+                    resolve(response);
+                }
+            });
+        });
+
+        if (!baseResult?.success) {
+            sendResponse(baseResult);
+            return;
+        }
+
+        const baseListings = baseResult.products || [];
+        console.log(`Background: Phase 1 complete — ${baseListings.length} listings fetched`);
+
+        // Phase 2: enrich each listing with high-res images, description, condition
+        sendProgressToTab(originTabId, {
+            phase: 'enriching',
+            current: 0,
+            total: baseListings.length,
+            message: `Found ${baseListings.length} listings. Fetching details...`,
+        });
+
+        const enrichedListings = await enrichFBListings(baseListings, tabId, tokens, originTabId);
+        console.log(`Background: Phase 2 complete — enrichment done for ${enrichedListings.length} listings`);
+
+        sendProgressToTab(originTabId, {
+            phase: 'saving',
+            current: enrichedListings.length,
+            total: enrichedListings.length,
+            message: 'Saving to database...',
+        });
+
+        sendResponse({ success: true, products: enrichedListings, count: enrichedListings.length });
+
+    } catch (e) {
+        console.error('Background: Facebook Sync Error:', e);
+        sendResponse({ success: false, error: e.message });
+    }
+}
+
+
+// --- 9. DEPOP CROSSLIST QUEUE ---
 let depopCrosslistState = {
     queue: [],
     results: [],

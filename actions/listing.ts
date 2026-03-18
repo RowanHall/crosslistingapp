@@ -18,29 +18,52 @@ export async function saveUniversalListings(listings: UniversalListingData[]) {
         return { success: true, count: 0 };
     }
 
+    // Fetch existing platforms_status for any listings already in the DB so we
+    // can merge rather than overwrite. Without this, a re-sync from Facebook
+    // would clobber a { grailed: "listed" } status set by a crosslist.
+    const externalIds = listings.map((item) => item.id);
+    const { data: existingRows } = await supabase
+        .from("listings")
+        .select("external_id, platforms_status")
+        .eq("user_id", user.id)
+        .in("external_id", externalIds);
+
+    const existingStatusMap = new Map<string, Record<string, string>>(
+        (existingRows ?? []).map((row) => [row.external_id, row.platforms_status ?? {}])
+    );
+
     // Map UniversalListing to Supabase DB Insert Type
-    const records = listings.map((item) => ({
-        user_id: user.id,
-        title: item.title,
-        description: item.description,
-        price: item.price || 0,
-        images: item.images,
-        currency: item.currency,
-        condition: item.condition,
-        brand: item.brand,
-        size: item.size,
-        source: item.source,
-        external_id: item.id, // The ID from the platform becomes our external_id
-        platform_data: item.originalData, // Raw data blob
-        // Initialize platform status for the source platform
-        platforms_status: { [item.source]: "draft" },
-    }));
+    const records = listings.map((item) => {
+        const existing = existingStatusMap.get(item.id) ?? {};
+        // Preserve all existing cross-platform statuses; only add the source
+        // platform status if it has never been set (don't reset "listed" → "draft").
+        const platforms_status = {
+            ...existing,
+            [item.source]: existing[item.source] ?? "draft",
+        };
+
+        return {
+            user_id: user.id,
+            title: item.title,
+            description: item.description,
+            price: item.price || 0,
+            images: item.images,
+            currency: item.currency,
+            condition: item.condition,
+            brand: item.brand,
+            size: item.size,
+            source: item.source,
+            external_id: item.id, // The ID from the platform becomes our external_id
+            platform_data: item.originalData, // Raw data blob
+            platforms_status,
+        };
+    });
 
     const { data, error } = await supabase
         .from("listings")
         .upsert(records, {
             onConflict: "external_id",
-            ignoreDuplicates: false // We want to update if it exists
+            ignoreDuplicates: false // Update content fields on re-sync
         })
         .select();
 

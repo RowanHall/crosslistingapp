@@ -10,7 +10,7 @@ export interface UniversalListingData {
     condition: ListingCondition;
     brand: string | null;
     size: string | null;
-    source: 'ebay' | 'depop' | 'grailed';
+    source: 'ebay' | 'depop' | 'grailed' | 'facebook';
     originalData: any;
 }
 
@@ -24,7 +24,7 @@ export class UniversalListing {
     condition: ListingCondition;
     brand: string | null;
     size: string | null;
-    source: 'ebay' | 'depop' | 'grailed';
+    source: 'ebay' | 'depop' | 'grailed' | 'facebook';
     originalData: any;
 
     constructor(data: UniversalListingData) {
@@ -173,6 +173,57 @@ export class UniversalListing {
             brand: data?.designers?.[0]?.name || null,
             size: data?.size || null,
             source: 'grailed',
+            originalData: data,
+        });
+    }
+
+    static fromFacebook(data: any): UniversalListing {
+        // Price comes as a formatted string e.g. "CA$86" or "$120.00"
+        let price: number | null = null;
+        if (data?.price) {
+            const numeric = String(data.price).replace(/[^0-9.]/g, '');
+            const parsed = parseFloat(numeric);
+            if (!isNaN(parsed)) price = parsed;
+        }
+
+        // Detect currency from the formatted string prefix
+        let currency = 'USD';
+        if (data?.price) {
+            const p = String(data.price);
+            if (p.startsWith('CA$'))      currency = 'CAD';
+            else if (p.startsWith('£'))   currency = 'GBP';
+            else if (p.startsWith('€'))   currency = 'EUR';
+            else if (p.startsWith('AU$')) currency = 'AUD';
+        }
+
+        // Prefer the full images array from deep fetch; fall back to nothing
+        const images: string[] = Array.isArray(data?.images) && data.images.length > 0
+            ? data.images
+            : [];
+
+        // Map FB's condition string to our enum.
+        // FB returns human-readable strings like "Used - Like New", "New", "Used - Good", etc.
+        const mapCondition = (cond: string | null): ListingCondition => {
+            if (!cond) return 'USED_GOOD';
+            const c = cond.toLowerCase();
+            if (c.includes('new') && !c.includes('like') && !c.includes('used')) return 'NEW';
+            if (c.includes('like new') || c.includes('gently used')) return 'USED_EXCELLENT';
+            if (c.includes('good'))  return 'USED_GOOD';
+            if (c.includes('fair') || c.includes('heavily')) return 'USED_FAIR';
+            return 'USED_GOOD';
+        };
+
+        return new UniversalListing({
+            id: String(data?.id || ''),
+            title: data?.title || '',
+            description: data?.description || '',
+            price,
+            currency,
+            images,
+            condition: mapCondition(data?.condition ?? null),
+            brand: null,
+            size: null,
+            source: 'facebook',
             originalData: data,
         });
     }

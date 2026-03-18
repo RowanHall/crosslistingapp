@@ -5,6 +5,7 @@ import { InventoryItem } from "@/components/dashboard/InventoryCard";
 import { createClient } from "@/utils/supabase/server";
 import { DepopSyncButton } from "@/components/dashboard/DepopSyncButton";
 import { GrailedSyncButton } from "@/components/dashboard/GrailedSyncButton";
+import { FacebookSyncButton } from "@/components/dashboard/FacebookSyncButton";
 import { CrosslistDepopButton } from "@/components/dashboard/CrosslistDepopButton";
 import { CrosslistFacebookButton } from "@/components/dashboard/CrosslistFacebookButton";
 import { CrosslistGrailedButton } from "@/components/dashboard/CrosslistGrailedButton";
@@ -63,6 +64,7 @@ export default async function InventoryPage(props: {
             <div className="flex gap-4">
                 <DepopSyncButton />
                 <GrailedSyncButton />
+                <FacebookSyncButton />
                 <CrosslistDepopButton />
                 <CrosslistFacebookButton />
                 <CrosslistGrailedButton />
