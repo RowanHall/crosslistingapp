@@ -1,5 +1,14 @@
 import { redirect } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
+import { LandingPage } from "@/components/landing/LandingPage";
 
-export default function Home() {
-  redirect("/inventory");
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/inventory");
+  }
+
+  return <LandingPage />;
 }
