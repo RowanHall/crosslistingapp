@@ -280,6 +280,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
+    if (request.action === 'INITIATE_FB_DELETE') {
+        handleFacebookDelete(request.listingId, sendResponse);
+        return true; // Keep channel open for async work
+    }
+
     if (request.action === 'DEPOP_POST_COMPLETE') {
         console.log(`Background: Depop post complete: "${request.listingTitle}" success=${request.success} error=${request.error || 'none'}`);
         if (request.stepLog && request.stepLog.length > 0) {
@@ -288,6 +293,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             console.log('Background: === End Step Log ===');
         }
         processNextDepopListing(request.success, request.error);
+        return false;
+    }
+
+    if (request.action === 'CROSSLIST_TO_EBAY') {
+        const payload = request.payload;
+        if (!payload) {
+            sendResponse({ success: false, error: 'No payload provided' });
+            return false;
+        }
+        chrome.storage.local.set({ ebay_crosslist_payload: payload }, () => {
+            console.log('Background: eBay crosslist payload saved for:', payload.title);
+            const suggestUrl = `https://www.ebay.com/sl/prelist/suggest?title=${encodeURIComponent(payload.title)}`;
+            chrome.tabs.create({ url: suggestUrl }, (tab) => {
+                console.log('Background: Opened eBay prelist tab:', tab.id);
+                sendResponse({ success: true, tabId: tab.id });
+            });
+        });
+        return true; // Keep channel open for async chrome.tabs.create
+    }
+
+    if (request.action === 'EBAY_PUBLISH_SUCCESS') {
+        const tabId = sender?.tab?.id;
+        console.log(`Background: eBay listing published! itemId=${request.itemId} — closing tab ${tabId}`);
+
+        if (tabId) {
+            chrome.tabs.remove(tabId, () => {
+                if (chrome.runtime.lastError) {
+                    console.warn('Background: Could not close eBay tab:', chrome.runtime.lastError.message);
+                }
+            });
+        }
+
+        // Notify the X-LIST UI tab so it can show a success toast
+        chrome.tabs.query({ url: 'http://localhost:3000/*' }, (tabs) => {
+            for (const uiTab of tabs) {
+                chrome.tabs.sendMessage(uiTab.id, {
+                    type: 'EBAY_PUBLISH_SUCCESS',
+                    itemId: request.itemId,
+                }).catch(() => {/* tab may not have content script */});
+            }
+        });
+
+        return false;
+    }
+
+    if (request.action === 'EBAY_FILL_COMPLETE') {
+        // Only reaches here on publish failure — tab is kept open for inspection
+        console.error(`Background: eBay fill/publish failed. Error: ${request.error} — tab left open for review.`);
         return false;
     }
 });
@@ -913,6 +966,58 @@ async function handleFacebookSync(sendResponse, originTabId) {
 
     } catch (e) {
         console.error('Background: Facebook Sync Error:', e);
+        sendResponse({ success: false, error: e.message });
+    }
+}
+
+
+async function handleFacebookDelete(listingId, sendResponse) {
+    console.log(`Background: Initiating FB delete for listing ${listingId}`);
+
+    try {
+        const creds = await chrome.storage.local.get([
+            'fb_dtsg', 'fb_lsd', 'fb_user_id', 'fb_rev', 'fb_hs', 'fb_dyn', 'fb_csr',
+        ]);
+
+        const tabs = await chrome.tabs.query({ url: '*://*.facebook.com/*' });
+        if (tabs.length === 0) {
+            sendResponse({
+                success: false,
+                error: 'No Facebook tab found. Please open facebook.com and try again.',
+            });
+            return;
+        }
+
+        const tabId = tabs[0].id;
+        console.log(`Background: Relaying FB delete to tab ${tabId}`);
+
+        chrome.tabs.sendMessage(tabId, {
+            action: 'DELETE_SINGLE_FB_LISTING',
+            listingId,
+            tokens: {
+                fb_dtsg: creds.fb_dtsg,
+                lsd:     creds.fb_lsd,
+                c_user:  creds.fb_user_id,
+                fb_rev:  creds.fb_rev,
+                fb_hs:   creds.fb_hs,
+                fb_dyn:  creds.fb_dyn,
+                fb_csr:  creds.fb_csr,
+            },
+        }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error('Background: FB delete relay error:', chrome.runtime.lastError.message);
+                sendResponse({
+                    success: false,
+                    error: `Extension disconnected from Facebook tab: ${chrome.runtime.lastError.message}`,
+                });
+                return;
+            }
+            console.log(`Background: FB delete result for listing ${listingId}:`, response);
+            sendResponse(response);
+        });
+
+    } catch (e) {
+        console.error('Background: Facebook Delete Error:', e);
         sendResponse({ success: false, error: e.message });
     }
 }

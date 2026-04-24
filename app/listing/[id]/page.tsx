@@ -3,6 +3,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { CrossPostButton } from "@/components/listing/CrossPostButton";
 import { FacebookCrosslistButton } from "@/components/listing/FacebookCrosslistButton";
 import { GrailedCrosslistButton } from "@/components/listing/GrailedCrosslistButton";
+import { EbayCrosslistButton } from "@/components/listing/EbayCrosslistButton";
 import { ImageGallery } from "@/components/listing/ImageGallery";
 import { notFound } from "next/navigation";
 
@@ -42,6 +43,16 @@ export default async function ListingDetailPage(props: {
                                 listingId={listing.id}
                                 alreadyListed={listing.platforms_status?.grailed === 'listed'}
                                 existingUrl={listing.grailed_listing_url ?? null}
+                            />
+                            <EbayCrosslistButton
+                                listing={{
+                                    title: listing.title,
+                                    description: listing.description ?? null,
+                                    price: listing.price,
+                                    images: listing.images ?? [],
+                                    brand: listing.brand ?? null,
+                                    condition: listing.condition ?? null,
+                                }}
                             />
                         </div>
                     </div>

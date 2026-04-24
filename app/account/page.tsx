@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { disconnectEbayAccount, getEbayConnectionStatus } from "@/actions/ebay";
 import { connectEbay, saveDepopToken } from "@/app/account/actions";
+import { ManageSubscriptionButton } from "@/components/billing/ManageSubscriptionButton";
 
 export default async function AccountPage() {
   const supabase = await createClient();
@@ -17,7 +18,13 @@ export default async function AccountPage() {
   }
 
   const isEbayConnected = await getEbayConnectionStatus();
-  
+
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('status, current_period_end')
+    .eq('user_id', user.id)
+    .single();
+
   const { data: depopIntegration } = await supabase
     .from("user_integrations")
     .select("id")
@@ -37,6 +44,34 @@ export default async function AccountPage() {
         </div>
 
         <div className="space-y-12">
+            {/* Billing Section */}
+            <section className="space-y-6">
+                <h2 className="text-xl font-bold uppercase tracking-tight border-b border-border pb-2">Billing</h2>
+                {subscription?.status === 'active' ? (
+                    <div className="flex items-center justify-between p-4 border border-border">
+                        <div className="space-y-1">
+                            <p className="font-bold uppercase tracking-wider text-sm">Pro — $19.99/month</p>
+                            {subscription.current_period_end && (
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                                    Renews {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                </p>
+                            )}
+                        </div>
+                        <ManageSubscriptionButton />
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-between p-4 border border-border">
+                        <p className="text-sm uppercase tracking-wider text-muted-foreground">No active subscription</p>
+                        <a
+                            href="/"
+                            className="text-xs uppercase tracking-widest font-bold border border-black px-4 py-2 hover:bg-black hover:text-white transition-colors"
+                        >
+                            Subscribe
+                        </a>
+                    </div>
+                )}
+            </section>
+
             {/* Profile Section */}
             <section className="space-y-6">
                 <h2 className="text-xl font-bold uppercase tracking-tight border-b border-border pb-2">Profile</h2>

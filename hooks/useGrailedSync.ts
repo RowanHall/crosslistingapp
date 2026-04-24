@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { UniversalListing } from "@/lib/universal-listing";
-import { saveUniversalListings } from "@/actions/listing";
 
 export interface SyncProgress {
     phase: 'fetching' | 'enriching' | 'saving' | 'done';
@@ -12,7 +10,6 @@ export interface SyncProgress {
 export function useGrailedSync() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncStatus, setSyncStatus] = useState<string | null>(null);
-    const [listings, setListings] = useState<UniversalListing[]>([]);
     const [progress, setProgress] = useState<SyncProgress | null>(null);
 
     const startSync = () => {
@@ -47,30 +44,32 @@ export function useGrailedSync() {
                 }
 
                 if (payload.success) {
-                    const count = payload.count !== undefined ? payload.count : 0;
+                    const products = payload.products ?? [];
+                    const count = payload.count ?? products.length;
 
-                    // Map raw data to UniversalListing
-                    if (payload.products && Array.isArray(payload.products)) {
+                    if (products.length > 0) {
                         try {
-                            const mappedListings = payload.products.map((item: any) =>
-                                UniversalListing.fromGrailed(item)
-                            );
-                            setListings(mappedListings);
-                            console.log("Hook: Mapped listings:", mappedListings);
+                            setProgress({ phase: 'saving', current: count, total: count, message: 'Uploading images & saving...' });
+                            setSyncStatus(`Fetched ${count} listings. Uploading images...`);
 
-                            // Save to Supabase (serialize to plain objects for server action)
-                            setProgress({ phase: 'saving', current: count, total: count, message: 'Saving to database...' });
-                            setSyncStatus(`Imported ${count} items. Saving to database...`);
-                            const plainListings = mappedListings.map((l: UniversalListing) => l.toPlainObject());
-                            const result = await saveUniversalListings(plainListings);
+                            // Image re-hosting and DB upsert happen server-side so that
+                            // Grailed CDN URLs (which can expire) are replaced with
+                            // permanent Supabase Storage URLs.
+                            const resp = await fetch("/api/integrations/grailed/sync", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ products }),
+                            });
 
-                            if (result.success) {
-                                setSyncStatus(`Success! Saved ${result.count} items to database.`);
-                                setProgress({ phase: 'done', current: count, total: count, message: `Saved ${result.count} items!` });
-                            } else {
-                                setSyncStatus("Imported items but failed to save to database.");
-                                setProgress(null);
+                            if (!resp.ok) {
+                                const err = await resp.json().catch(() => ({}));
+                                throw new Error(err.error ?? `Server error ${resp.status}`);
                             }
+
+                            const result = await resp.json();
+
+                            setSyncStatus(`Success! Saved ${result.count} items to database.`);
+                            setProgress({ phase: 'done', current: count, total: count, message: `Saved ${result.count} items!` });
 
                         } catch (err: any) {
                             console.error("Hook: Error processing listings:", err);
@@ -95,5 +94,5 @@ export function useGrailedSync() {
         return () => window.removeEventListener("message", handleMessage);
     }, []);
 
-    return { startSync, isSyncing, syncStatus, listings, progress };
+    return { startSync, isSyncing, syncStatus, progress };
 }
