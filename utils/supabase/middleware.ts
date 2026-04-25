@@ -37,19 +37,13 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    const pathname = request.nextUrl.pathname
-
-    // Public routes — no auth or subscription required
-    const isPublic =
-        pathname === '/' ||
-        pathname.startsWith('/login') ||
-        pathname.startsWith('/auth') ||
-        pathname.startsWith('/billing') ||
-        pathname.startsWith('/api/stripe/webhook')
-
-    if (isPublic) return response
-
-    if (!user) {
+    if (
+        !user &&
+        request.nextUrl.pathname !== '/' &&
+        !request.nextUrl.pathname.startsWith('/login') &&
+        !request.nextUrl.pathname.startsWith('/auth')
+    ) {
+        // no user, potentially respond by redirecting the user to the login page
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)
