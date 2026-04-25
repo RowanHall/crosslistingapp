@@ -49,19 +49,21 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // Check subscription for all protected routes
-    const { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user.id)
-        .single()
+    if (user) {
+        // Check subscription for all protected routes
+        const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('status')
+            .eq('user_id', user.id)
+            .single()
 
-    const isActive = subscription?.status === 'active'
+        const isActive = subscription?.status === 'active'
 
-    if (!isActive) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/'
-        return NextResponse.redirect(url)
+        if (!isActive) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/'
+            return NextResponse.redirect(url)
+        }
     }
 
     return response
