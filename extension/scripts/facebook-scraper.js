@@ -766,6 +766,93 @@ async function fetchAllFBListings(tokens) {
 }
 
 // ---------------------------------------------------------------------------
+// DELETE LISTING
+// ---------------------------------------------------------------------------
+
+/**
+ * Deletes a single Facebook Marketplace listing via the
+ * useCometMarketplaceForSaleItemDeleteMutation GraphQL mutation.
+ *
+ * Must run inside a real FB tab so credentials:'include' attaches session
+ * cookies and sec-fetch headers are browser-authentic.
+ *
+ * @param {string} listingId  The numeric FB listing ID to delete
+ * @param {object} tokens     { fb_dtsg, lsd, c_user, fb_rev, fb_hs, fb_dyn, fb_csr }
+ * @returns {{ success: boolean, deletedId?: string, error?: string }}
+ */
+async function deleteFBListing(listingId, tokens) {
+    const { fb_dtsg, lsd, c_user, fb_rev, fb_hs, fb_dyn, fb_csr } = tokens;
+
+    const variables = {
+        input: {
+            actor_id: c_user,
+            client_mutation_id: String(Date.now()),
+            batch_delete_variants: true,
+            for_sale_item_id: listingId,
+            referral_surface: 'BROWSE_TAB',
+            surface: 'MARKETPLACE_PAGE_SELLING',
+        },
+    };
+
+    const rev = fb_rev || '1035354658';
+    const params = new URLSearchParams({
+        doc_id: '30073389588942699',
+        variables: JSON.stringify(variables),
+        fb_api_req_friendly_name: 'useCometMarketplaceForSaleItemDeleteMutation',
+        fb_api_caller_class: 'RelayModern',
+        server_timestamps: 'true',
+        __user: c_user || '',
+        __a: '1',
+        fb_dtsg,
+        lsd,
+        jazoest: computeJazoest(fb_dtsg),
+        av: c_user || '',
+        __rev: rev,
+        __spin_r: rev,
+        __spin_b: 'trunk',
+        __spin_t: String(Math.floor(Date.now() / 1000)),
+        dpr: '2',
+        __comet_req: '15',
+    });
+    if (fb_hs)  params.set('__hs', fb_hs);
+    if (fb_dyn) params.set('__dyn', fb_dyn);
+    if (fb_csr) params.set('__csr', fb_csr);
+
+    const response = await fetch('https://www.facebook.com/api/graphql/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-FB-LSD': lsd,
+            'X-FB-Friendly-Name': 'useCometMarketplaceForSaleItemDeleteMutation',
+            'X-ASBD-ID': '359341',
+        },
+        body: params.toString(),
+    });
+
+    if (!response.ok) {
+        throw new Error(`FB HTTP ${response.status} deleting listing ${listingId}`);
+    }
+
+    // Strip the for(;;); prefix before parsing
+    const text = await response.text();
+    const clean = text.startsWith('for (;;);') ? text.slice('for (;;);'.length) : text;
+    const json = JSON.parse(clean);
+
+    const deletedId = json?.data?.commerce_for_sale_item_delete?.deleted_for_sale_item_id;
+    if (deletedId === listingId) {
+        console.log(`FB Scraper: listing ${listingId} deleted successfully`);
+        return { success: true, deletedId };
+    }
+
+    // Surface any FB-side error message
+    const fbError = json?.errors?.[0]?.message
+        || json?.error?.message
+        || JSON.stringify(json).slice(0, 200);
+    throw new Error(`Delete mutation did not confirm deletion: ${fbError}`);
+}
+
+// ---------------------------------------------------------------------------
 // MESSAGE LISTENER
 // ---------------------------------------------------------------------------
 
@@ -805,6 +892,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         fetchSingleFBListing(request.listingId, tokens)
             .then(data => sendResponse({ success: true, ...data }))
+            .catch(err => sendResponse({ success: false, error: err.message }));
+
+        return true; // keep channel open for async response
+    }
+
+    if (request.action === 'DELETE_SINGLE_FB_LISTING') {
+        const liveTokens = extractFacebookTokens();
+        const tokens = {
+            fb_dtsg: liveTokens.fb_dtsg || request.tokens?.fb_dtsg,
+            lsd:     liveTokens.lsd     || request.tokens?.lsd,
+            c_user:  liveTokens.c_user  || request.tokens?.c_user,
+            fb_rev:  liveTokens.fb_rev  || request.tokens?.fb_rev,
+            fb_hs:   liveTokens.fb_hs   || request.tokens?.fb_hs,
+            fb_dyn:  liveTokens.fb_dyn  || request.tokens?.fb_dyn,
+            fb_csr:  liveTokens.fb_csr  || request.tokens?.fb_csr,
+        };
+
+        if (!tokens.fb_dtsg || !tokens.lsd) {
+            sendResponse({ success: false, error: 'Could not extract fb_dtsg / lsd from this page.' });
+            return;
+        }
+
+        deleteFBListing(request.listingId, tokens)
+            .then(result => sendResponse(result))
             .catch(err => sendResponse({ success: false, error: err.message }));
 
         return true; // keep channel open for async response

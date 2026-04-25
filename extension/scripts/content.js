@@ -33,6 +33,30 @@ window.addEventListener("message", (event) => {
         });
     }
 
+    // --- EBAY CROSSLIST RELAY ---
+    if (event.data && event.data.action === 'CROSSLIST_TO_EBAY') {
+        console.log('Content Script: Saw CROSSLIST_TO_EBAY, relaying to Background...');
+        chrome.runtime.sendMessage(event.data, (response) => {
+            console.log('Content Script: CROSSLIST_TO_EBAY response:', response);
+            window.postMessage({
+                action: 'CROSSLIST_TO_EBAY_STARTED',
+                payload: response,
+            }, '*');
+        });
+    }
+
+    // --- FACEBOOK DELETE RELAY ---
+    if (event.data && event.data.action === 'INITIATE_FB_DELETE') {
+        console.log(`Content Script: Saw INITIATE_FB_DELETE for listing ${event.data.listingId}, relaying to Background...`);
+        chrome.runtime.sendMessage(event.data, (response) => {
+            console.log('Content Script: INITIATE_FB_DELETE response:', response);
+            window.postMessage({
+                action: 'DELETE_COMPLETE_FACEBOOK',
+                payload: response
+            }, '*');
+        });
+    }
+
     // --- CROSSLIST DEPOP RELAY ---
     if (event.data && event.data.action === 'CROSSLIST_DEPOP') {
         console.log('Content Script: Saw CROSSLIST_DEPOP, relaying to Background...');
@@ -65,6 +89,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         window.postMessage({
             action: 'CROSSLIST_DEPOP_PROGRESS',
             progress: request.progress
+        }, '*');
+        return;
+    }
+
+    // --- EBAY PUBLISH SUCCESS RELAY ---
+    if (request.type === 'EBAY_PUBLISH_SUCCESS') {
+        window.postMessage({
+            action: 'EBAY_PUBLISH_SUCCESS',
+            itemId: request.itemId,
         }, '*');
         return;
     }

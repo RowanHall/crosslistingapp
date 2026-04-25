@@ -20,7 +20,10 @@
         "https://*.grailed.com/*",
         "https://*.algolia.net/*",
         "https://*.algolianet.com/*",
-        "https://*.facebook.com/*"
+        "https://*.facebook.com/*",
+        "https://*.ebay.com/*",
+        "https://*.ebay.ca/*",
+        "https://*.ebay.co.uk/*"
     ],
     "action": {
         "default_popup": "popup.html"
@@ -67,6 +70,21 @@
             "matches": ["https://www.facebook.com/*"],
             "js": ["scripts/facebook-scraper.js"],
             "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "https://www.ebay.com/sl/prelist/suggest*",
+                "https://www.ebay.ca/sl/prelist/suggest*",
+                "https://www.ebay.co.uk/sl/prelist/suggest*",
+                "https://www.ebay.com/sl/prelist/identify*",
+                "https://www.ebay.ca/sl/prelist/identify*",
+                "https://www.ebay.co.uk/sl/prelist/identify*",
+                "https://www.ebay.com/lstng*",
+                "https://www.ebay.ca/lstng*",
+                "https://www.ebay.co.uk/lstng*"
+            ],
+            "js": ["scripts/ebay-filler.js"],
+            "run_at": "document_end"
         }
     ],
     "side_panel": {
