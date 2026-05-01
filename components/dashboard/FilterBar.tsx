@@ -20,8 +20,8 @@ export function FilterBar({ currentFilter = "all" }: FilterBarProps) {
           key={filter.value}
           href={`/inventory?filter=${filter.value}`}
           className={cn(
-            "hover:text-black transition-colors uppercase",
-            currentFilter === filter.value ? "text-black underline underline-offset-4 decoration-1" : "text-muted-foreground"
+            "hover:text-foreground transition-colors uppercase",
+            currentFilter === filter.value ? "text-foreground underline underline-offset-4 decoration-[#2D6A4F] decoration-1" : "text-muted-foreground"
           )}
         >
           {filter.label}

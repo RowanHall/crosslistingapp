@@ -124,7 +124,7 @@ function BulkActionBar({ selectedIds, rawListings, onClear }: BulkActionBarProps
         type="button"
         onClick={onClick}
         disabled={isActive || isAnyActive}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-black bg-white text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-[3px] disabled:translate-y-[3px]"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <span
           className="inline-block w-2 h-2 rounded-full flex-shrink-0"
@@ -140,11 +140,11 @@ function BulkActionBar({ selectedIds, rawListings, onClear }: BulkActionBarProps
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-black bg-white shadow-[0_-4px_0_0_rgba(0,0,0,1)] animate-in slide-in-from-bottom-2 duration-150">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background shadow-sm animate-in slide-in-from-bottom-2 duration-150">
       <div className="container mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
         {/* Selection count + clear */}
         <div className="flex items-center gap-3 min-w-0">
-          <span className="font-black text-sm uppercase tracking-tight whitespace-nowrap">
+          <span className="text-sm uppercase tracking-tight whitespace-nowrap" style={{ fontFamily: "var(--font-barlow)", fontWeight: 900 }}>
             {count} {count === 1 ? "item" : "items"} selected
           </span>
           <button

@@ -37,20 +37,27 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
+    const pathname = request.nextUrl.pathname
+
+    // API routes: skip all checks
+    if (pathname.startsWith('/api/')) return response
+
+    // Homepage and post-purchase success page: always let through
+    if (pathname === '/' || pathname.startsWith('/billing/success')) return response
+
+    // No user: redirect to login
     if (
         !user &&
-        request.nextUrl.pathname !== '/' &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth')
+        !pathname.startsWith('/login') &&
+        !pathname.startsWith('/auth')
     ) {
-        // no user, potentially respond by redirecting the user to the login page
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)
     }
 
+    // User with no active subscription: redirect to homepage
     if (user) {
-        // Check subscription for all protected routes
         const { data: subscription } = await supabase
             .from('subscriptions')
             .select('status')
@@ -60,9 +67,7 @@ export async function updateSession(request: NextRequest) {
         const isActive = subscription?.status === 'active'
 
         if (!isActive) {
-            const url = request.nextUrl.clone()
-            url.pathname = '/'
-            return NextResponse.redirect(url)
+            return NextResponse.redirect(new URL('/#pricing', request.url))
         }
     }
 

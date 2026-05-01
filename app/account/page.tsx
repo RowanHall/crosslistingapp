@@ -35,7 +35,7 @@ export default async function AccountPage() {
   const isDepopConnected = !!depopIntegration;
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-black selection:text-white">
+    <div className="grain-overlay min-h-screen bg-background text-foreground font-sans">
       <Navbar />
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-12">
@@ -64,7 +64,7 @@ export default async function AccountPage() {
                         <p className="text-sm uppercase tracking-wider text-muted-foreground">No active subscription</p>
                         <a
                             href="/"
-                            className="text-xs uppercase tracking-widest font-bold border border-black px-4 py-2 hover:bg-black hover:text-white transition-colors"
+                            className="text-xs uppercase tracking-widest font-bold border border-border px-4 py-2 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
                         >
                             Subscribe
                         </a>
@@ -103,13 +103,13 @@ export default async function AccountPage() {
                                 "use server";
                                 await disconnectEbayAccount();
                             }}>
-                                <Button variant="outline" className="rounded-none border-black text-xs uppercase tracking-widest hover:bg-black hover:text-white">
+                                <Button variant="outline" className="rounded-none border-border text-xs uppercase tracking-widest hover:bg-muted">
                                     Disconnect
                                 </Button>
                             </form>
                         ) : (
                             <form action={connectEbay}>
-                                <Button className="rounded-none bg-black text-white hover:invert border border-black text-xs uppercase tracking-widest">
+                                <Button className="rounded-none bg-primary text-primary-foreground hover:opacity-90 border-0 text-xs uppercase tracking-widest">
                                     Connect eBay
                                 </Button>
                             </form>
@@ -128,7 +128,7 @@ export default async function AccountPage() {
                                     <Input 
                                         name="token" 
                                         placeholder="••••• (Unchanged)" 
-                                        className="rounded-none border-black h-8 text-xs flex-1" 
+                                        className="rounded-none border-border h-8 text-xs flex-1 bg-background" 
                                     />
                                     <Button 
                                         formAction={saveDepopToken}
@@ -140,7 +140,7 @@ export default async function AccountPage() {
                                 <Textarea 
                                     name="cookie" 
                                     placeholder="Update Cookie String (Required for Bot Protection)" 
-                                    className="rounded-none border-black text-xs w-full min-h-[100px] font-mono" 
+                                    className="rounded-none border-border text-xs w-full min-h-[100px] font-mono bg-background" 
                                 />
                             </form>
                         ) : (
@@ -149,7 +149,7 @@ export default async function AccountPage() {
                                     <Input 
                                         name="token" 
                                         placeholder="Paste Auth Token" 
-                                        className="rounded-none border-black h-8 text-xs flex-1" 
+                                        className="rounded-none border-border h-8 text-xs flex-1 bg-background" 
                                         required
                                     />
                                     <Button 
@@ -162,7 +162,7 @@ export default async function AccountPage() {
                                 <Textarea 
                                     name="cookie" 
                                     placeholder="Paste Cookie String (Required for Bot Protection)" 
-                                    className="rounded-none border-black text-xs w-full min-h-[100px] font-mono" 
+                                    className="rounded-none border-border text-xs w-full min-h-[100px] font-mono bg-background" 
                                     required
                                 />
                             </form>

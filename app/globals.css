@@ -45,71 +45,37 @@
 
 :root {
   --radius: 0rem;
-  --background: oklch(1 0 0); /* White */
-  --foreground: oklch(0 0 0); /* Jet Black */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0 0 0); /* Black */
-  --primary-foreground: oklch(1 0 0); /* White */
-  --secondary: oklch(0.98 0 0); /* #F9F9F9 */
-  --secondary-foreground: oklch(0 0 0);
-  --muted: oklch(0.98 0 0);
-  --muted-foreground: oklch(0.4 0 0); /* Dark Slate */
-  --accent: oklch(0.98 0 0);
-  --accent-foreground: oklch(0 0 0);
+  --background: #EDE7DB;        /* warm parchment */
+  --foreground: #141210;        /* espresso near-black */
+  --card: #E2DACC;              /* deeper parchment */
+  --card-foreground: #141210;
+  --popover: #EDE7DB;
+  --popover-foreground: #141210;
+  --primary: #2D6A4F;           /* forest green */
+  --primary-foreground: #ffffff;
+  --secondary: #D9D1C4;         /* label patch */
+  --secondary-foreground: #141210;
+  --muted: #E2DACC;
+  --muted-foreground: rgba(20,18,16,0.42);
+  --accent: #D9D1C4;
+  --accent-foreground: #141210;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0 0 0); /* Sharp black borders */
-  --input: oklch(0 0 0);
-  --ring: oklch(0 0 0);
-  --chart-1: oklch(0 0 0);
-  --chart-2: oklch(0.2 0 0);
-  --chart-3: oklch(0.4 0 0);
-  --chart-4: oklch(0.6 0 0);
-  --chart-5: oklch(0.8 0 0);
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0 0 0);
-  --sidebar-primary: oklch(0 0 0);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.98 0 0);
-  --sidebar-accent-foreground: oklch(0 0 0);
-  --sidebar-border: oklch(0 0 0);
-  --sidebar-ring: oklch(0 0 0);
-}
-
-.dark {
-  --background: oklch(0 0 0);
-  --foreground: oklch(1 0 0);
-  --card: oklch(0 0 0);
-  --card-foreground: oklch(1 0 0);
-  --popover: oklch(0 0 0);
-  --popover-foreground: oklch(1 0 0);
-  --primary: oklch(1 0 0);
-  --primary-foreground: oklch(0 0 0);
-  --secondary: oklch(0.1 0 0);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.1 0 0);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.1 0 0);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0);
-  --input: oklch(1 0 0);
-  --ring: oklch(1 0 0);
-  --chart-1: oklch(1 0 0);
-  --chart-2: oklch(0.8 0 0);
-  --chart-3: oklch(0.6 0 0);
-  --chart-4: oklch(0.4 0 0);
-  --chart-5: oklch(0.2 0 0);
-  --sidebar: oklch(0 0 0);
-  --sidebar-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(1 0 0);
-  --sidebar-primary-foreground: oklch(0 0 0);
-  --sidebar-accent: oklch(0.1 0 0);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(1 0 0);
-  --sidebar-ring: oklch(1 0 0);
+  --border: rgba(20,18,16,0.11);
+  --input: rgba(20,18,16,0.11);
+  --ring: #2D6A4F;
+  --chart-1: #2D6A4F;
+  --chart-2: #52B788;
+  --chart-3: #74C69D;
+  --chart-4: #95D5B2;
+  --chart-5: #B7E4C7;
+  --sidebar: #EDE7DB;
+  --sidebar-foreground: #141210;
+  --sidebar-primary: #2D6A4F;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #D9D1C4;
+  --sidebar-accent-foreground: #141210;
+  --sidebar-border: rgba(20,18,16,0.11);
+  --sidebar-ring: #2D6A4F;
 }
 
 @layer base {
@@ -119,4 +85,131 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Homepage animations */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+  will-change: transform;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up-1 { animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.05s; }
+.fade-up-2 { animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.18s; }
+.fade-up-3 { animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.3s; }
+.fade-up-4 { animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.44s; }
+.fade-up-5 { animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0.58s; }
+
+/* ── Hero responsive ───────────────────────────────────────────────── */
+.hero-section {
+  padding: clamp(64px, 9vh, 100px) clamp(24px, 6vw, 80px) clamp(48px, 6vh, 72px);
+  min-height: calc(100vh - 60px);
+  border-bottom: 1px solid rgba(20,18,16,0.11);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-top: 1px solid rgba(20,18,16,0.11);
+  padding-top: 36px;
+  margin-top: 60px;
+}
+
+.hero-stat-item {
+  padding-right: 44px;
+  padding-left: 44px;
+  border-left: 1px solid rgba(20,18,16,0.11);
+}
+
+.hero-stat-item:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.hero-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .hero-cta-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    padding-top: 28px;
+    margin-top: 40px;
+  }
+
+  .hero-stat-item {
+    border-left: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* ── Nav responsive ────────────────────────────────────────────────── */
+.site-header {
+  padding: 0 clamp(24px, 5vw, 64px);
+}
+
+@media (max-width: 480px) {
+  .nav-pricing {
+    display: none;
+  }
+}
+
+/* ── Section padding responsive ───────────────────────────────────── */
+.content-section {
+  padding: clamp(72px, 9vh, 120px) clamp(24px, 5vw, 64px);
+}
+
+@media (max-width: 640px) {
+  .step-grid-item {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px solid rgba(20,18,16,0.11);
+    padding-top: 32px;
+  }
+
+  .step-grid-item:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .pricing-card {
+    padding: 36px 28px !important;
+  }
+}
+
+/* Grain overlay for vintage texture */
+.grain-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23grain)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
 }

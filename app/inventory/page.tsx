@@ -37,7 +37,7 @@ export default async function InventoryPage(props: {
       : inventoryItems.filter((item) => item.status === filter);
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-black selection:text-white">
+    <div className="grain-overlay min-h-screen bg-background text-foreground font-sans">
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <InventoryContent

@@ -40,7 +40,7 @@ export default async function AnalyticsPage() {
   const avgSalePrice = soldItems.length > 0 ? (totalRevenue / soldItems.length).toFixed(2) : "0.00";
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-black selection:text-white">
+    <div className="grain-overlay min-h-screen bg-background text-foreground font-sans">
       <Navbar />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-12">
@@ -49,7 +49,7 @@ export default async function AnalyticsPage() {
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-border border border-border mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[rgba(20,18,16,0.11)] border border-border mb-12">
             <MetricCard title="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} />
             <MetricCard title="Active Listings" value={activeItems.length.toString()} />
             <MetricCard title="Sell-Through Rate" value={`${sellThroughRate}%`} />
@@ -60,7 +60,7 @@ export default async function AnalyticsPage() {
         <div className="space-y-4">
             <h2 className="text-xl font-bold uppercase tracking-tight">Recent Sales</h2>
             <div className="border border-border">
-                <div className="grid grid-cols-4 p-4 border-b border-border bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="grid grid-cols-4 p-4 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     <div>Item</div>
                     <div>Price</div>
                     <div>Platform</div>
@@ -89,9 +89,12 @@ export default async function AnalyticsPage() {
 
 function MetricCard({ title, value }: { title: string, value: string }) {
     return (
-        <div className="bg-background p-8 flex flex-col justify-between h-48 hover:bg-secondary/10 transition-colors">
+        <div className="bg-card p-8 flex flex-col justify-between h-48 hover:bg-secondary/50 transition-colors">
             <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</span>
-            <span className="text-5xl lg:text-6xl font-black tracking-tighter mt-4">{value}</span>
+            <span
+                className="text-5xl lg:text-6xl tracking-tighter mt-4"
+                style={{ fontFamily: "var(--font-barlow)", fontWeight: 900 }}
+            >{value}</span>
         </div>
     )
 }

@@ -76,7 +76,7 @@ function SyncButton() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={isAnySyncing}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-black bg-white text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-[3px] disabled:translate-y-[3px]"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isAnySyncing ? (
           <><Loader2 className="h-3 w-3 animate-spin" /> Syncing…</>
@@ -87,7 +87,7 @@ function SyncButton() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute top-full mt-2 z-50 bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-3 min-w-[160px]">
+        <div className="absolute top-full mt-2 z-50 bg-card border border-border shadow-md p-3 min-w-[160px]">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
             Sync from:
           </p>
@@ -95,7 +95,7 @@ function SyncButton() {
             {(Object.keys(PLATFORMS) as Platform[]).map((p) => (
               <label key={p} className="flex items-center gap-2 cursor-pointer group">
                 <div
-                  className={`w-4 h-4 border-2 border-black flex items-center justify-center flex-shrink-0 transition-colors ${picks.has(p) ? "bg-black" : "bg-white"}`}
+                  className={`w-4 h-4 border-2 flex items-center justify-center flex-shrink-0 transition-colors ${picks.has(p) ? "bg-primary border-primary" : "bg-background border-border"}`}
                   onClick={() => togglePick(p)}
                 >
                   {picks.has(p) && (
@@ -118,7 +118,7 @@ function SyncButton() {
             type="button"
             onClick={startSelected}
             disabled={picks.size === 0}
-            className="w-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-black text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-800 transition-colors"
+            className="w-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           >
             Sync Now
           </button>
@@ -134,8 +134,8 @@ function SyncButton() {
                 <span className="text-[10px] text-muted-foreground font-bold uppercase">Grailed</span>
                 <span className="text-[10px] font-mono">{grailedPct}%</span>
               </div>
-              <div className="w-full h-1.5 bg-gray-200 border border-black overflow-hidden">
-                <div className="h-full bg-black transition-all" style={{ width: `${grailedPct}%` }} />
+              <div className="w-full h-1.5 bg-muted border border-border overflow-hidden">
+                <div className="h-full bg-primary transition-all" style={{ width: `${grailedPct}%` }} />
               </div>
             </div>
           )}
@@ -147,12 +147,11 @@ function SyncButton() {
                   <span className="text-[10px] font-mono">{facebookPct}%</span>
                 )}
               </div>
-              <div className="w-full h-1.5 bg-gray-200 border border-black overflow-hidden">
+              <div className="w-full h-1.5 bg-muted border border-border overflow-hidden">
                 <div
-                  className="h-full transition-all"
+                  className="h-full bg-primary transition-all"
                   style={{
                     width: facebook.progress.total > 0 ? `${facebookPct}%` : "100%",
-                    backgroundColor: "#1877F2",
                   }}
                 />
               </div>

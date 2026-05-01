@@ -22,7 +22,7 @@ interface InventoryCardProps {
 export function InventoryCard({ item, isSelected = false, onToggle }: InventoryCardProps) {
   return (
     <Link href={`/listing/${item.id}`} className="block">
-      <Card className={`group rounded-none overflow-hidden transition-colors duration-200 cursor-pointer bg-card h-full ${isSelected ? "border-2 border-black" : "border border-border hover:border-black"}`}>
+      <Card className={`group rounded-none overflow-hidden transition-colors duration-200 cursor-pointer bg-card h-full ${isSelected ? "border-2 border-[#2D6A4F]" : "border border-border hover:border-[rgba(20,18,16,0.3)]"}`}>
         <div className="aspect-[3/4] relative bg-secondary w-full overflow-hidden">
           {item.imageUrl ? (
             <img
@@ -38,7 +38,7 @@ export function InventoryCard({ item, isSelected = false, onToggle }: InventoryC
 
           {/* Selected tint */}
           {isSelected && (
-            <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+            <div className="absolute inset-0 bg-[#2D6A4F]/5 pointer-events-none" />
           )}
 
           {/* Platform badges — top-left */}
@@ -47,7 +47,7 @@ export function InventoryCard({ item, isSelected = false, onToggle }: InventoryC
               <Badge
                 key={p}
                 variant="secondary"
-                className="rounded-none text-[10px] uppercase tracking-wider bg-white/90 backdrop-blur-sm border border-black/10"
+                className="rounded-none text-[10px] uppercase tracking-wider bg-[#D9D1C4]/90 backdrop-blur-sm border border-border"
               >
                 {p}
               </Badge>
@@ -65,8 +65,8 @@ export function InventoryCard({ item, isSelected = false, onToggle }: InventoryC
               }}
             >
               <div
-                className={`w-5 h-5 border-2 border-black flex items-center justify-center transition-colors ${
-                  isSelected ? "bg-black" : "bg-white/80 backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                className={`w-5 h-5 border-2 flex items-center justify-center transition-colors ${
+                  isSelected ? "bg-[#2D6A4F] border-[#2D6A4F]" : "border-foreground bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100"
                 }`}
               >
                 {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}

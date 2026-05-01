@@ -8,11 +8,15 @@ export async function Navbar() {
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/" className="text-lg font-bold tracking-tighter uppercase">
-            X-LIST
+          <Link
+            href="/"
+            className="text-lg uppercase tracking-tighter"
+            style={{ fontFamily: "var(--font-barlow)", fontWeight: 900 }}
+          >
+            CROSSLIST
           </Link>
           {user && (
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium tracking-wide">

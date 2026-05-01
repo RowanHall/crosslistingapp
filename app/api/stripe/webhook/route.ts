@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/utils/supabase/admin';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET!);
+import { stripe } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -23,22 +22,30 @@ export async function POST(request: NextRequest) {
 
     const customerId = session.customer as string;
     const subscriptionId = session.subscription as string;
+    const supabaseUserId = session.metadata?.supabase_user_id;
+
+    if (!supabaseUserId) {
+      console.error('Webhook: missing supabase_user_id in session metadata', session.id);
+      return NextResponse.json({ received: true });
+    }
 
     const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const periodEnd = stripeSubscription.items.data[0].current_period_end;
 
     await supabase.from('subscriptions').upsert({
+      user_id: supabaseUserId,
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
-      status: stripeSubscription.status === 'active' ? 'active' : stripeSubscription.status,
-      current_period_end: new Date((stripeSubscription as any).current_period_end * 1000).toISOString(),
-    }, { onConflict: 'stripe_customer_id' });
+      status: stripeSubscription.status,
+      current_period_end: new Date(periodEnd * 1000).toISOString(),
+    }, { onConflict: 'user_id' });
   }
 
   if (event.type === 'customer.subscription.updated') {
     const sub = event.data.object as Stripe.Subscription;
     await supabase.from('subscriptions').update({
-      status: sub.status === 'active' ? 'active' : sub.status,
-      current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
+      status: sub.status,
+      current_period_end: new Date(sub.items.data[0].current_period_end * 1000).toISOString(),
     }).eq('stripe_subscription_id', sub.id);
   }
 

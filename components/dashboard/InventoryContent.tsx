@@ -47,7 +47,7 @@ export function InventoryContent({ items, rawListings, filter }: InventoryConten
             <button
               type="button"
               onClick={selectedIds.size === items.length ? clear : selectAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-black bg-white text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider border border-border bg-background text-foreground hover:bg-muted transition-colors"
             >
               {selectedIds.size > 0 && selectedIds.size === items.length
                 ? "Deselect All"

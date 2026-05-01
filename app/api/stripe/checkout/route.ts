@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET!);
+import { stripe } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -24,6 +22,21 @@ export async function POST(request: NextRequest) {
 
   let customerId = subscription?.stripe_customer_id;
 
+  // Validate the stored customer still exists in Stripe (guards against deleted test customers)
+  if (customerId) {
+    try {
+      await stripe.customers.retrieve(customerId);
+    } catch (err: any) {
+      if (err?.code === 'resource_missing') {
+        customerId = null;
+        await admin.from('subscriptions').update({ stripe_customer_id: null, stripe_subscription_id: null })
+          .eq('user_id', user.id);
+      } else {
+        throw err;
+      }
+    }
+  }
+
   if (!customerId) {
     const customer = await stripe.customers.create({ email: user.email });
     customerId = customer.id;
@@ -40,8 +53,9 @@ export async function POST(request: NextRequest) {
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
-    success_url: `${baseUrl}/billing/success`,
+    success_url: `${baseUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/`,
+    metadata: { supabase_user_id: user.id },
   });
 
   return NextResponse.json({ url: session.url });
