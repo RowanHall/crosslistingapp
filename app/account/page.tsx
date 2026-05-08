@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { disconnectEbayAccount, getEbayConnectionStatus } from "@/actions/ebay";
-import { connectEbay, saveDepopToken } from "@/app/account/actions";
+import { connectEbay, saveDepopToken, saveShopifyCredentials } from "@/app/account/actions";
 import { ManageSubscriptionButton } from "@/components/billing/ManageSubscriptionButton";
 
 export default async function AccountPage() {
@@ -31,8 +31,18 @@ export default async function AccountPage() {
     .eq("user_id", user.id)
     .eq("platform", "depop")
     .single();
-    
+
   const isDepopConnected = !!depopIntegration;
+
+  const { data: shopifyIntegration } = await supabase
+    .from("user_integrations")
+    .select("metadata")
+    .eq("user_id", user.id)
+    .eq("platform", "shopify")
+    .single();
+
+  const isShopifyConnected = !!shopifyIntegration;
+  const shopifyStoreName = (shopifyIntegration?.metadata as any)?.store_name ?? null;
 
   return (
     <div className="grain-overlay min-h-screen bg-background text-foreground font-sans">
@@ -167,6 +177,41 @@ export default async function AccountPage() {
                                 />
                             </form>
                         )}
+                    </div>
+
+                    {/* Shopify Connection */}
+                    <div className="p-4 border border-border space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${isShopifyConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <span className="font-bold uppercase tracking-wider">Shopify</span>
+                            {isShopifyConnected && shopifyStoreName && (
+                                <span className="text-xs text-muted-foreground font-mono">{shopifyStoreName}</span>
+                            )}
+                        </div>
+                        <form className="flex flex-col gap-2">
+                            <Input
+                                name="store_url"
+                                placeholder={isShopifyConnected ? "Store URL (unchanged)" : "my-store.myshopify.com"}
+                                className="rounded-none border-border h-8 text-xs bg-background"
+                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    name="access_token"
+                                    type="password"
+                                    placeholder={isShopifyConnected ? "Access token (unchanged)" : "shpat_..."}
+                                    className="rounded-none border-border h-8 text-xs flex-1 bg-background font-mono"
+                                />
+                                <Button
+                                    formAction={saveShopifyCredentials}
+                                    className="rounded-none bg-primary text-primary-foreground hover:opacity-90 text-xs uppercase tracking-widest h-8"
+                                >
+                                    {isShopifyConnected ? "Update" : "Connect"}
+                                </Button>
+                            </div>
+                        </form>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                            Create a custom app in Shopify Admin → Apps → Develop apps, then copy the Admin API access token.
+                        </p>
                     </div>
 
                     {/* Placeholders for others */}

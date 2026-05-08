@@ -3,6 +3,7 @@
 import { useDepopSync } from "@/hooks/useDepopSync";
 import { useGrailedSync } from "@/hooks/useGrailedSync";
 import { useFacebookSync } from "@/hooks/useFacebookSync";
+import { useShopifySync } from "@/hooks/useShopifySync";
 import { Loader2, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,6 +11,7 @@ const PLATFORMS = {
   depop:    { label: "Depop",    color: "#FF2300" },
   grailed:  { label: "Grailed",  color: "#161616" },
   facebook: { label: "Facebook", color: "#1877F2" },
+  shopify:  { label: "Shopify",  color: "#96BF48" },
 } as const;
 
 type Platform = keyof typeof PLATFORMS;
@@ -20,9 +22,10 @@ function SyncButton() {
   const depop    = useDepopSync();
   const grailed  = useGrailedSync();
   const facebook = useFacebookSync();
+  const shopify  = useShopifySync();
 
   const [open, setOpen]   = useState(false);
-  const [picks, setPicks] = useState<Set<Platform>>(new Set(["depop", "grailed", "facebook"]));
+  const [picks, setPicks] = useState<Set<Platform>>(new Set(["depop", "grailed", "facebook", "shopify"]));
   const dropdownRef       = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -37,7 +40,7 @@ function SyncButton() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const isAnySyncing = depop.isSyncing || grailed.isSyncing || facebook.isSyncing;
+  const isAnySyncing = depop.isSyncing || grailed.isSyncing || facebook.isSyncing || shopify.isSyncing;
 
   const togglePick = (p: Platform) =>
     setPicks((prev) => {
@@ -51,6 +54,7 @@ function SyncButton() {
     if (picks.has("depop"))    depop.startSync();
     if (picks.has("grailed"))  grailed.startSync();
     if (picks.has("facebook")) facebook.startSync();
+    if (picks.has("shopify"))  shopify.startSync();
   };
 
   // Per-platform status lines
@@ -58,6 +62,7 @@ function SyncButton() {
     { platform: "depop",    status: depop.syncStatus,    isSyncing: depop.isSyncing },
     { platform: "grailed",  status: grailed.syncStatus,  isSyncing: grailed.isSyncing },
     { platform: "facebook", status: facebook.syncStatus, isSyncing: facebook.isSyncing },
+    { platform: "shopify",  status: shopify.syncStatus,  isSyncing: shopify.isSyncing },
   ];
 
   // Progress for platforms that support it
@@ -126,8 +131,14 @@ function SyncButton() {
       )}
 
       {/* Per-platform progress / status */}
-      {(depop.isSyncing || grailed.isSyncing || facebook.isSyncing) && (
+      {(depop.isSyncing || grailed.isSyncing || facebook.isSyncing || shopify.isSyncing) && (
         <div className="flex flex-col gap-1 mt-1">
+          {shopify.isSyncing && (
+            <div className="flex items-center gap-1">
+              <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-bold uppercase">Shopify syncing…</span>
+            </div>
+          )}
           {grailed.isSyncing && grailed.progress && (
             <div className="w-36">
               <div className="flex justify-between mb-0.5">

@@ -3,6 +3,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { CrossPostButton } from "@/components/listing/CrossPostButton";
 import { FacebookCrosslistButton } from "@/components/listing/FacebookCrosslistButton";
 import { GrailedCrosslistButton } from "@/components/listing/GrailedCrosslistButton";
+import { ShopifyCrosslistButton } from "@/components/listing/ShopifyCrosslistButton";
 import { EbayCrosslistButton } from "@/components/listing/EbayCrosslistButton";
 import { ImageGallery } from "@/components/listing/ImageGallery";
 import { notFound } from "next/navigation";
@@ -43,6 +44,11 @@ export default async function ListingDetailPage(props: {
                                 listingId={listing.id}
                                 alreadyListed={listing.platforms_status?.grailed === 'listed'}
                                 existingUrl={listing.grailed_listing_url ?? null}
+                            />
+                            <ShopifyCrosslistButton
+                                listingId={listing.id}
+                                alreadyListed={listing.platforms_status?.shopify === 'listed'}
+                                existingUrl={listing.shopify_listing_url ?? null}
                             />
                             <EbayCrosslistButton
                                 listing={{

@@ -1,4 +1,5 @@
 export type ListingCondition = 'NEW' | 'USED_EXCELLENT' | 'USED_GOOD' | 'USED_FAIR';
+export type ListingSource = 'ebay' | 'depop' | 'grailed' | 'facebook' | 'shopify';
 
 export interface UniversalListingData {
     id: string;
@@ -10,7 +11,7 @@ export interface UniversalListingData {
     condition: ListingCondition;
     brand: string | null;
     size: string | null;
-    source: 'ebay' | 'depop' | 'grailed' | 'facebook';
+    source: ListingSource;
     originalData: any;
 }
 
@@ -24,7 +25,7 @@ export class UniversalListing {
     condition: ListingCondition;
     brand: string | null;
     size: string | null;
-    source: 'ebay' | 'depop' | 'grailed' | 'facebook';
+    source: ListingSource;
     originalData: any;
 
     constructor(data: UniversalListingData) {
@@ -173,6 +174,45 @@ export class UniversalListing {
             brand: data?.designers?.[0]?.name || null,
             size: data?.size || null,
             source: 'grailed',
+            originalData: data,
+        });
+    }
+
+    static fromShopify(data: any): UniversalListing {
+        // Parse condition from tags (look for "condition:*" tag)
+        const tags: string[] = (data.tags ?? "")
+            .split(",")
+            .map((t: string) => t.trim().toLowerCase());
+        const conditionTag = tags.find((t) => t.startsWith("condition:"));
+
+        const mapCondition = (tag: string | undefined): ListingCondition => {
+            if (!tag) return 'USED_GOOD';
+            const value = tag.split(":")[1] ?? "";
+            if (value === "new")            return 'NEW';
+            if (value === "used_excellent") return 'USED_EXCELLENT';
+            if (value === "used_fair")      return 'USED_FAIR';
+            return 'USED_GOOD';
+        };
+
+        // Strip HTML from body_html
+        const description = (data.body_html ?? "").replace(/<[^>]*>/g, "").trim();
+
+        // Prefer re-hosted images if the sync route attached them
+        const images: string[] = Array.isArray(data._hostedImages) && data._hostedImages.length > 0
+            ? data._hostedImages
+            : (data.images ?? []).map((img: any) => img.src ?? img);
+
+        return new UniversalListing({
+            id: String(data.id ?? ''),
+            title: data.title ?? '',
+            description,
+            price: parseFloat(data.variants?.[0]?.price ?? '0') || null,
+            currency: 'USD',
+            images,
+            condition: mapCondition(conditionTag),
+            brand: data.vendor || null,
+            size: data.variants?.[0]?.option1 ?? null,
+            source: 'shopify',
             originalData: data,
         });
     }
