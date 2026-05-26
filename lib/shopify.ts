@@ -76,7 +76,7 @@ export async function listShopifyProducts(
     );
 
     while (url) {
-        const res = await fetch(url, { headers: getShopifyHeaders(auth.accessToken) });
+        const res: Response = await fetch(url, { headers: getShopifyHeaders(auth.accessToken) });
         if (!res.ok) {
             throw new Error(`Shopify products fetch failed: ${res.status} ${await res.text()}`);
         }

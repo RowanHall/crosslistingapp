@@ -15,8 +15,7 @@ export function useGrailedSync() {
     const startSync = () => {
         setIsSyncing(true);
         setSyncStatus("Starting Grailed sync...");
-        setListings([]); // Clear previous listings
-        setProgress({ phase: 'fetching', current: 0, total: 0, message: 'Starting sync...' });
+setProgress({ phase: 'fetching', current: 0, total: 0, message: 'Starting sync...' });
         console.log("Hook: Sending SYNC_GRAILED request...");
 
         window.postMessage({ action: "SYNC_GRAILED" }, "*");
