@@ -19,7 +19,7 @@ export default async function LoginPage(props: {
     const email = formData.get("email") as string;
     const supabase = await createClient();
 
-    const base = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const base = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const callbackUrl = returnTo
       ? `${base}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
       : `${base}/auth/callback`;
@@ -42,12 +42,16 @@ export default async function LoginPage(props: {
     <div className="grain-overlay min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md rounded-none border border-border shadow-none bg-card">
         <CardHeader className="text-center space-y-2">
-          <CardTitle
-            className="text-2xl uppercase tracking-tighter"
-            style={{ fontFamily: "var(--font-barlow)", fontWeight: 900 }}
+          <span
+            className="text-2xl uppercase text-primary relative inline-block"
+            style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, letterSpacing: "-0.03em" }}
           >
-            CROSSLIST LOGIN
-          </CardTitle>
+            <span className="absolute inset-0 blur-[1.2px] opacity-35" aria-hidden>CROSSLIST</span>
+            <span className="relative" style={{
+              maskImage: "linear-gradient(to right, black 50%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to right, black 50%, transparent 100%)",
+            }}>CROSSLIST</span>
+          </span>
           <p className="text-xs text-muted-foreground uppercase tracking-widest">
             Enter your email to continue
           </p>

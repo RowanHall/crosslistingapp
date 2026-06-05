@@ -13,10 +13,14 @@ export async function Navbar() {
         <div className="flex items-center gap-8">
           <Link
             href="/"
-            className="text-lg uppercase tracking-tighter"
-            style={{ fontFamily: "var(--font-barlow)", fontWeight: 900 }}
+            className="text-xl uppercase relative inline-flex text-primary"
+            style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, letterSpacing: "-0.03em" }}
           >
-            CROSSLIST
+            <span className="absolute inset-0 blur-[1.2px] opacity-35 text-primary" aria-hidden>CROSSLIST</span>
+            <span className="relative" style={{
+              maskImage: "linear-gradient(to right, black 50%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to right, black 50%, transparent 100%)",
+            }}>CROSSLIST</span>
           </Link>
           {user && (
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium tracking-wide">

@@ -3,6 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import Link from "next/link";
 
+const PLATFORM_ICONS: Record<string, string> = {
+  facebook: "/platforms/facebook2.svg",
+  ebay: "/platforms/ebay.png",
+  grailed: "/platforms/grailed.png",
+  depop: "/platforms/depop.png",
+  shopify: "/platforms/shopify.svg",
+};
+
 export interface InventoryItem {
   id: string;
   title: string;
@@ -41,17 +49,27 @@ export function InventoryCard({ item, isSelected = false, onToggle }: InventoryC
             <div className="absolute inset-0 bg-[#2D6A4F]/5 pointer-events-none" />
           )}
 
-          {/* Platform badges — top-left */}
+          {/* Platform icons — top-left */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {item.platforms.map((p) => (
-              <Badge
-                key={p}
-                variant="secondary"
-                className="rounded-none text-[10px] uppercase tracking-wider bg-[#D9D1C4]/90 backdrop-blur-sm border border-border"
-              >
-                {p}
-              </Badge>
-            ))}
+            {item.platforms.map((p) => {
+              const icon = PLATFORM_ICONS[p.toLowerCase()];
+              return icon ? (
+                <div
+                  key={p}
+                  className="w-6 h-6 bg-[#D9D1C4]/90 backdrop-blur-sm border border-border flex items-center justify-center"
+                >
+                  <img src={icon} alt={p} className="w-4 h-4 object-contain" />
+                </div>
+              ) : (
+                <Badge
+                  key={p}
+                  variant="secondary"
+                  className="rounded-none text-[10px] uppercase tracking-wider bg-[#D9D1C4]/90 backdrop-blur-sm border border-border"
+                >
+                  {p}
+                </Badge>
+              );
+            })}
           </div>
 
           {/* Checkbox — top-right */}

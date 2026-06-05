@@ -6,9 +6,9 @@ import { InventoryCard, InventoryItem } from "./InventoryCard";
 import { useDepopCrosslist } from "@/hooks/useDepopCrosslist";
 
 const PLATFORMS = {
-  depop: { label: "Depop", color: "#FF2300" },
-  grailed: { label: "Grailed", color: "#161616" },
-  facebook: { label: "Facebook", color: "#1877F2" },
+  depop: { label: "Depop", icon: "/platforms/depop.png" },
+  grailed: { label: "Grailed", icon: "/platforms/grailed.png" },
+  facebook: { label: "Facebook", icon: "/platforms/facebook2.svg" },
 } as const;
 
 type Platform = keyof typeof PLATFORMS;
@@ -126,10 +126,7 @@ function BulkActionBar({ selectedIds, rawListings, onClear }: BulkActionBarProps
         disabled={isActive || isAnyActive}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        <span
-          className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-          style={{ backgroundColor: PLATFORMS[platform].color }}
-        />
+        <img src={PLATFORMS[platform].icon} alt={PLATFORMS[platform].label} className="w-4 h-4 object-contain flex-shrink-0" />
         {isActive ? (
           <><Loader2 className="h-3 w-3 animate-spin" /> Posting…</>
         ) : (

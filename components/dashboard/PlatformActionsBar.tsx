@@ -8,10 +8,10 @@ import { Loader2, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const PLATFORMS = {
-  depop:    { label: "Depop",    color: "#FF2300" },
-  grailed:  { label: "Grailed",  color: "#161616" },
-  facebook: { label: "Facebook", color: "#1877F2" },
-  shopify:  { label: "Shopify",  color: "#96BF48" },
+  depop:    { label: "Depop",    icon: "/platforms/depop.png" },
+  grailed:  { label: "Grailed",  icon: "/platforms/grailed.png" },
+  facebook: { label: "Facebook", icon: "/platforms/facebook2.svg" },
+  shopify:  { label: "Shopify",  icon: "/platforms/shopify.svg" },
 } as const;
 
 type Platform = keyof typeof PLATFORMS;
@@ -110,10 +110,7 @@ function SyncButton() {
                   )}
                 </div>
                 <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
-                  <span
-                    className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: PLATFORMS[p].color }}
-                  />
+                  <img src={PLATFORMS[p].icon} alt={PLATFORMS[p].label} className="w-4 h-4 object-contain flex-shrink-0" />
                   {PLATFORMS[p].label}
                 </span>
               </label>
