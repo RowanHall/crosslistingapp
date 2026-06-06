@@ -100,6 +100,20 @@ export function MasterListingForm() {
           await publishToEbay(listingId);
       }
 
+      // 4. Publish to Facebook if selected
+      if (store.platforms.includes('facebook')) {
+          setStatusMessage("Publishing to Facebook...");
+          const res = await fetch('/api/crosslist/facebook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ listingId }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            console.error('Facebook crosslist error:', data.error);
+          }
+      }
+
       // Depop publishing is handled via the Chrome extension, not server-side
 
       setStatusMessage("Done!");

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { PlatformTicket } from "./PlatformTicket";
 
 interface CrossPostButtonProps {
     listing: {
@@ -13,24 +13,30 @@ interface CrossPostButtonProps {
 
 export function CrossPostButton({ listing }: CrossPostButtonProps) {
     const handlePostToPoshmark = () => {
-        console.log("Posting to Poshmark...", listing);
-        window.postMessage({ 
-            type: "CROSS_POST", 
-            payload: { 
-                title: listing.title, 
-                description: listing.description, 
-                price: listing.price, 
-                images: listing.images 
-            } 
-        }, "*");
+        window.postMessage(
+            {
+                type: "CROSS_POST",
+                payload: {
+                    title: listing.title,
+                    description: listing.description,
+                    price: listing.price,
+                    images: listing.images,
+                },
+            },
+            "*"
+        );
     };
 
     return (
-        <Button 
-            onClick={handlePostToPoshmark}
-            className="bg-[#8f041b] hover:bg-[#720316] text-white font-bold tracking-wider"
-        >
-            LIST TO POSHMARK
-        </Button>
+        <PlatformTicket
+            brandColor="#8F041B"
+            monogram="PSH"
+            platformName="Poshmark"
+            ticketCode="PM · 005"
+            state="idle"
+            staticAction
+            ctaIdle="Send to Extension"
+            onDispatch={handlePostToPoshmark}
+        />
     );
 }

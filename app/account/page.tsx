@@ -4,9 +4,8 @@ import { redirect } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { disconnectEbayAccount, getEbayConnectionStatus } from "@/actions/ebay";
-import { connectEbay, saveDepopToken, saveShopifyCredentials } from "@/app/account/actions";
+import { connectEbay, saveShopifyCredentials } from "@/app/account/actions";
 import { ManageSubscriptionButton } from "@/components/billing/ManageSubscriptionButton";
 
 export default async function AccountPage() {
@@ -24,15 +23,6 @@ export default async function AccountPage() {
     .select('status, current_period_end')
     .eq('user_id', user.id)
     .single();
-
-  const { data: depopIntegration } = await supabase
-    .from("user_integrations")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("platform", "depop")
-    .single();
-
-  const isDepopConnected = !!depopIntegration;
 
   const { data: shopifyIntegration } = await supabase
     .from("user_integrations")
@@ -126,59 +116,6 @@ export default async function AccountPage() {
                         )}
                     </div>
 
-                    {/* Depop Connection */}
-                    <div className="flex items-center justify-between p-4 border border-border">
-                         <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${isDepopConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                            <span className="font-bold uppercase tracking-wider">Depop</span>
-                        </div>
-                        {isDepopConnected ? (
-                            <form className="flex flex-col gap-2 w-full">
-                                <div className="flex gap-2">
-                                    <Input 
-                                        name="token" 
-                                        placeholder="••••• (Unchanged)" 
-                                        className="rounded-none border-border h-8 text-xs flex-1 bg-background" 
-                                    />
-                                    <Button 
-                                        formAction={saveDepopToken}
-                                        className="rounded-none bg-black text-white hover:invert border border-black text-xs uppercase tracking-widest h-8"
-                                    >
-                                        Update
-                                    </Button>
-                                </div>
-                                <Textarea 
-                                    name="cookie" 
-                                    placeholder="Update Cookie String (Required for Bot Protection)" 
-                                    className="rounded-none border-border text-xs w-full min-h-[100px] font-mono bg-background" 
-                                />
-                            </form>
-                        ) : (
-                            <form className="flex flex-col gap-2 w-full">
-                                <div className="flex gap-2">
-                                    <Input 
-                                        name="token" 
-                                        placeholder="Paste Auth Token" 
-                                        className="rounded-none border-border h-8 text-xs flex-1 bg-background" 
-                                        required
-                                    />
-                                    <Button 
-                                        formAction={saveDepopToken}
-                                        className="rounded-none bg-black text-white hover:invert border border-black text-xs uppercase tracking-widest h-8"
-                                    >
-                                        Save
-                                    </Button>
-                                </div>
-                                <Textarea 
-                                    name="cookie" 
-                                    placeholder="Paste Cookie String (Required for Bot Protection)" 
-                                    className="rounded-none border-border text-xs w-full min-h-[100px] font-mono bg-background" 
-                                    required
-                                />
-                            </form>
-                        )}
-                    </div>
-
                     {/* Shopify Connection */}
                     <div className="p-4 border border-border space-y-3">
                         <div className="flex items-center gap-3">
@@ -214,16 +151,6 @@ export default async function AccountPage() {
                         </p>
                     </div>
 
-                    {/* Placeholders for others */}
-                    <div className="space-y-2 opacity-40 pointer-events-none grayscale">
-                        <div className="flex items-center justify-between p-4 border border-border">
-                             <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-gray-300" />
-                                <span className="font-bold uppercase tracking-wider">Poshmark</span>
-                            </div>
-                            <Button disabled variant="outline" className="rounded-none text-xs uppercase tracking-widest">Connect</Button>
-                        </div>
-                    </div>
                 </div>
             </section>
         </div>

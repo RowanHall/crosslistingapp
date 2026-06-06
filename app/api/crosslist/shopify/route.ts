@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { listingId } = body;
+        const { listingId, force } = body as { listingId?: string; force?: boolean };
 
         if (!listingId) {
             return NextResponse.json({ error: "listingId is required" }, { status: 400, headers: corsHeaders });
@@ -45,6 +45,23 @@ export async function POST(request: Request) {
 
         if (listingError || !listing) {
             return NextResponse.json({ error: "Listing not found" }, { status: 404, headers: corsHeaders });
+        }
+
+        // Idempotency guard: refuse to re-post a listing already live on Shopify unless
+        // caller explicitly passes force=true.
+        const alreadyListed =
+            listing.platforms_status?.shopify === "listed"
+            || !!listing.shopify_product_id
+            || !!listing.shopify_listing_url;
+        if (alreadyListed && !force) {
+            return NextResponse.json(
+                {
+                    error: "Already listed on Shopify",
+                    code: "ALREADY_LISTED",
+                    listingUrl: listing.shopify_listing_url ?? null,
+                },
+                { status: 409, headers: corsHeaders }
+            );
         }
 
         // Fetch Shopify credentials

@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { InventoryItem } from "@/components/dashboard/InventoryCard";
 import { InventoryContent } from "@/components/dashboard/InventoryContent";
+import { OnboardingWalkthrough } from "@/components/onboarding/OnboardingWalkthrough";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function InventoryPage(props: {
@@ -10,6 +11,16 @@ export default async function InventoryPage(props: {
   const filter = typeof searchParams.filter === "string" ? searchParams.filter : "all";
 
   const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: subscription } = await supabase
+    .from("subscriptions")
+    .select("onboarding_completed")
+    .eq("user_id", user!.id)
+    .single();
+
+  const showOnboarding = subscription?.onboarding_completed === false;
+
   const { data: listings, error } = await supabase
     .from("listings")
     .select("*")
@@ -21,13 +32,14 @@ export default async function InventoryPage(props: {
     const platforms = Object.keys(item.platforms_status || {});
     const isListed  = Object.values(item.platforms_status || {}).some((s) => s === "listed");
     return {
-      id:       item.id,
-      title:    item.title,
-      price:    item.price,
-      currency: item.currency || "USD",
-      imageUrl: item.images?.[0] || null,
-      status:   isListed ? "listed" : "draft",
+      id:        item.id,
+      title:     item.title,
+      price:     item.price,
+      currency:  item.currency || "USD",
+      imageUrl:  item.images?.[0] || null,
+      status:    isListed ? "listed" : "draft",
       platforms,
+      createdAt: item.created_at,
     };
   });
 
@@ -39,6 +51,7 @@ export default async function InventoryPage(props: {
   return (
     <div className="grain-overlay min-h-screen bg-background text-foreground font-sans">
       <Navbar />
+      {showOnboarding && <OnboardingWalkthrough userId={user!.id} />}
       <main className="container mx-auto px-4 py-8">
         <InventoryContent
           items={filteredItems}

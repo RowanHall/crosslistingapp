@@ -5,6 +5,7 @@ import { useGrailedSync } from "@/hooks/useGrailedSync";
 import { useFacebookSync } from "@/hooks/useFacebookSync";
 import { useShopifySync } from "@/hooks/useShopifySync";
 import { Loader2, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
+import { PlatformLoginReminder } from "@/components/ui/PlatformLoginReminder";
 import { useEffect, useRef, useState } from "react";
 
 const PLATFORMS = {
@@ -115,6 +116,9 @@ function SyncButton() {
                 </span>
               </label>
             ))}
+          </div>
+          <div className="mb-2">
+            <PlatformLoginReminder compact />
           </div>
           <button
             type="button"

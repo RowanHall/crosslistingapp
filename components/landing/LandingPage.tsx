@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const PLATFORMS = ["DEPOP", "GRAILED", "POSHMARK", "FACEBOOK", "EBAY"];
+const PLATFORMS = ["DEPOP", "GRAILED", "SHOPIFY", "FACEBOOK", "EBAY"];
 
 export function LandingPage() {
   return (
@@ -61,7 +61,7 @@ export function LandingPage() {
             </h1>
 
             <p className="hero-sub text-sm text-white/50 max-w-sm leading-relaxed tracking-wide font-sans mb-10">
-              Stop copy-pasting the same listing to Depop, Grailed, Poshmark, Facebook, and eBay.
+              Stop copy-pasting the same listing to Depop, Grailed, Shopify, Facebook, and eBay.
               X-LIST imports your inventory and cross-posts with one click.
             </p>
 
@@ -122,7 +122,7 @@ export function LandingPage() {
                 {
                   num: "03",
                   title: "CROSSLIST",
-                  desc: "Hit post. X-LIST publishes your item to Poshmark, Facebook Marketplace, eBay — all at once, formatted correctly for each platform.",
+                  desc: "Hit post. X-LIST publishes your item to Shopify, Facebook Marketplace, eBay — all at once, formatted correctly for each platform.",
                 },
               ].map((step, i) => (
                 <div
@@ -168,7 +168,7 @@ export function LandingPage() {
                 {
                   label: "MULTI-PLATFORM",
                   tag: "5 PLATFORMS",
-                  desc: "Depop, Grailed, Poshmark, Facebook Marketplace, and eBay. All connected. All managed here.",
+                  desc: "Depop, Grailed, Shopify, Facebook Marketplace, and eBay. All connected. All managed here.",
                 },
               ].map((f, i) => (
                 <div

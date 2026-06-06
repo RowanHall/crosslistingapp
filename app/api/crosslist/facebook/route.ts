@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
         const body = await request.json();
         console.log('[FB Crosslist] Request body:', JSON.stringify(body));
-        const { listingId } = body;
+        const { listingId, force } = body as { listingId?: string; force?: boolean };
 
         if (!listingId) {
             console.error('[FB Crosslist] Missing listingId. Body keys:', Object.keys(body));
@@ -72,6 +72,21 @@ export async function POST(request: Request) {
         }
 
         console.log('[FB Crosslist] Found listing:', listing.id, listing.title);
+
+        // Idempotency guard: refuse to re-post a listing already live on Facebook Marketplace
+        // unless caller explicitly passes force=true.
+        const alreadyListed =
+            listing.platforms_status?.facebook === "listed" || !!listing.facebook_listing_url;
+        if (alreadyListed && !force) {
+            return NextResponse.json(
+                {
+                    error: "Already listed on Facebook Marketplace",
+                    code: "ALREADY_LISTED",
+                    listingUrl: listing.facebook_listing_url ?? null,
+                },
+                { status: 409, headers: corsHeaders }
+            );
+        }
 
         // Fetch Facebook credentials — fetch as array to avoid .single() failing on
         // duplicate rows; order by created_at desc so we always get the freshest tokens

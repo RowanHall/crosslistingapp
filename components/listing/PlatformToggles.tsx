@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 import { useListingStore } from "@/store/useListingStore";
 
 const PLATFORMS = [
-  { id: "grailed", label: "GRAILED" },
-  { id: "ebay", label: "EBAY" },
-  { id: "poshmark", label: "POSHMARK" },
-  { id: "depop", label: "DEPOP" },
+  { id: "grailed", label: "GRAILED", icon: "/platforms/grailed.png" },
+  { id: "ebay", label: "EBAY", icon: "/platforms/ebay.png" },
+  { id: "facebook", label: "FACEBOOK", icon: "/platforms/facebook2.svg" },
+  { id: "depop", label: "DEPOP", icon: "/platforms/depop.png" },
 ];
 
 export function PlatformToggles() {
@@ -36,6 +36,9 @@ export function PlatformToggles() {
                     onCheckedChange={() => togglePlatform(platform.id)}
                     className="rounded-none border-muted-foreground data-[state=checked]:bg-black data-[state=checked]:border-black"
                 />
+                {platform.icon && (
+                  <img src={platform.icon} alt={platform.label} className="w-5 h-5 object-contain" />
+                )}
                 <Label htmlFor={platform.id} className="text-sm font-medium uppercase tracking-wide cursor-pointer">
                   {platform.label}
                 </Label>

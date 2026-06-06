@@ -35,11 +35,13 @@ export async function saveUniversalListings(listings: UniversalListingData[]) {
     // Map UniversalListing to Supabase DB Insert Type
     const records = listings.map((item) => {
         const existing = existingStatusMap.get(item.id) ?? {};
-        // Preserve all existing cross-platform statuses; only add the source
-        // platform status if it has never been set (don't reset "listed" → "draft").
+        // An item imported from a marketplace sync is, by definition, live on
+        // its source platform — default to "listed" rather than "draft".
+        // Preserve any prior status (e.g. "unlisted"/"sold" set by reconciliation)
+        // so we don't accidentally revive a closed listing.
         const platforms_status = {
             ...existing,
-            [item.source]: existing[item.source] ?? "draft",
+            [item.source]: existing[item.source] ?? "listed",
         };
 
         return {

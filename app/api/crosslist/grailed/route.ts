@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { listingId } = body;
+        const { listingId, force } = body as { listingId?: string; force?: boolean };
 
         if (!listingId) {
             return NextResponse.json({ error: "listingId is required" }, { status: 400, headers: corsHeaders });
@@ -49,6 +49,21 @@ export async function POST(request: Request) {
 
         if (listingError || !listing) {
             return NextResponse.json({ error: "Listing not found" }, { status: 404, headers: corsHeaders });
+        }
+
+        // Idempotency guard: refuse to re-post a listing that is already live on Grailed
+        // unless the caller explicitly passes force=true (e.g. "Update" button in PlatformTicket).
+        const alreadyListed =
+            listing.platforms_status?.grailed === "listed" || !!listing.grailed_listing_url;
+        if (alreadyListed && !force) {
+            return NextResponse.json(
+                {
+                    error: "Already listed on Grailed",
+                    code: "ALREADY_LISTED",
+                    listingUrl: listing.grailed_listing_url ?? null,
+                },
+                { status: 409, headers: corsHeaders }
+            );
         }
 
         // Fetch Grailed credentials from DB

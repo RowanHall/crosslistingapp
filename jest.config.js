@@ -12,6 +12,14 @@ const customJestConfig = {
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/$1',
     },
+    // Exclude shared test helpers, fixtures, and the Playwright e2e dir from Jest discovery.
+    // Playwright runs e2e separately via `npm run test:e2e`.
+    testPathIgnorePatterns: [
+        '/node_modules/',
+        '/__tests__/helpers/',
+        '/__tests__/__fixtures__/',
+        '/e2e/',
+    ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

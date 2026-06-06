@@ -19,6 +19,7 @@ export interface InventoryItem {
   imageUrl: string;
   status: "draft" | "listed" | "sold";
   platforms: string[];
+  createdAt: string;
 }
 
 interface InventoryCardProps {
