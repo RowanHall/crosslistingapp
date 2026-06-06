@@ -193,4 +193,90 @@ describe('POST /api/crosslist/facebook', () => {
         // DB is unchanged
         expect(supabase._db.listings[0].facebook_listing_url).toBeNull();
     });
+
+    // --- Additional error-path branches -----------------------------------
+
+    it('returns 400 when listingId is missing', async () => {
+        const supabase = createMockSupabase({ user: { id: USER_ID } });
+        mockCreateClient.mockResolvedValue(supabase as any);
+
+        const res = await POST(makeReq({}));
+        expect(res.status).toBe(400);
+        const json = await res.json();
+        expect(json.error).toMatch(/listingId is required/);
+    });
+
+    it('returns 404 when the listing is not found / not owned', async () => {
+        const supabase = createMockSupabase({ user: { id: USER_ID }, seed: { listings: [] } });
+        mockCreateClient.mockResolvedValue(supabase as any);
+
+        const res = await POST(makeReq({ listingId: LISTING_ID }));
+        expect(res.status).toBe(404);
+    });
+
+    it('returns 400 when the Facebook integration is missing', async () => {
+        const supabase = createMockSupabase({
+            user: { id: USER_ID },
+            seed: { listings: [seedActiveListing()], user_integrations: [] },
+        });
+        mockCreateClient.mockResolvedValue(supabase as any);
+
+        const res = await POST(makeReq({ listingId: LISTING_ID }));
+        const json = await res.json();
+        expect(res.status).toBe(400);
+        expect(json.error).toMatch(/not connected/i);
+    });
+
+    it('returns 400 with a "no images" message when the listing has no photos', async () => {
+        const supabase = createMockSupabase({
+            user: { id: USER_ID },
+            seed: {
+                listings: [seedActiveListing({ images: [] })],
+                user_integrations: [seedFacebookIntegration(USER_ID)],
+            },
+        });
+        mockCreateClient.mockResolvedValue(supabase as any);
+
+        const res = await POST(makeReq({ listingId: LISTING_ID }));
+        const json = await res.json();
+        expect(res.status).toBe(400);
+        expect(json.error).toMatch(/no images/i);
+        expect(mockUploadPhoto).not.toHaveBeenCalled();
+    });
+
+    it('returns a generic 500 when the platform error is not a session error', async () => {
+        const supabase = createMockSupabase({
+            user: { id: USER_ID },
+            seed: {
+                listings: [seedActiveListing()],
+                user_integrations: [seedFacebookIntegration(USER_ID)],
+            },
+        });
+        mockCreateClient.mockResolvedValue(supabase as any);
+        mockUploadPhoto.mockResolvedValue('photo-1');
+        mockCreateFB.mockRejectedValue(new Error('Boom 500'));
+
+        const res = await POST(makeReq({ listingId: LISTING_ID }));
+        const json = await res.json();
+        expect(res.status).toBe(500);
+        expect(json.error).toBe('Boom 500');
+        // DB is left untouched on failure
+        expect(supabase._db.listings[0].facebook_listing_url).toBeNull();
+    });
+
+    it('returns 500 from the outer catch when stored credentials are corrupt', async () => {
+        const supabase = createMockSupabase({
+            user: { id: USER_ID },
+            seed: {
+                listings: [seedActiveListing()],
+                user_integrations: [
+                    { ...seedFacebookIntegration(USER_ID), access_token: 'not-valid-json' },
+                ],
+            },
+        });
+        mockCreateClient.mockResolvedValue(supabase as any);
+
+        const res = await POST(makeReq({ listingId: LISTING_ID }));
+        expect(res.status).toBe(500);
+    });
 });

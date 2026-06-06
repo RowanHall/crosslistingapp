@@ -19,6 +19,7 @@ interface OpCounts {
     insert: number;
     upsert: number;
     update: number;
+    delete: number;
 }
 
 export interface MockSupabaseClient {
@@ -33,6 +34,8 @@ interface Builder {
     insert: (rows: any | any[]) => Builder;
     upsert: (rows: any | any[], opts?: { onConflict?: string; ignoreDuplicates?: boolean }) => Builder;
     update: (patch: any) => Builder;
+    delete: () => Builder;
+    match: (criteria: Record<string, any>) => Builder;
     eq: (col: string, val: any) => Builder;
     in: (col: string, vals: any[]) => Builder;
     neq: (col: string, val: any) => Builder;
@@ -52,13 +55,13 @@ export function createMockSupabase(opts: MockSupabaseOptions): MockSupabaseClien
     }
     const counts: Record<string, OpCounts> = {};
     const bumpCount = (table: string, op: keyof OpCounts) => {
-        counts[table] = counts[table] ?? { select: 0, insert: 0, upsert: 0, update: 0 };
+        counts[table] = counts[table] ?? { select: 0, insert: 0, upsert: 0, update: 0, delete: 0 };
         counts[table][op]++;
     };
 
     function buildBuilder(table: string): Builder {
         const filters: Array<(row: any) => boolean> = [];
-        let mode: 'select' | 'insert' | 'upsert' | 'update' | null = null;
+        let mode: 'select' | 'insert' | 'upsert' | 'update' | 'delete' | null = null;
         let pendingPatch: any = null;
         let pendingRows: any[] = [];
         let upsertOpts: { onConflict?: string; ignoreDuplicates?: boolean } = {};
@@ -123,6 +126,12 @@ export function createMockSupabase(opts: MockSupabaseOptions): MockSupabaseClien
                 for (const m of matched) Object.assign(m, pendingPatch);
                 return { data: matched, error: null };
             }
+            if (mode === 'delete') {
+                bumpCount(table, 'delete');
+                const removed = applyFilters(rows);
+                db[table] = rows.filter((r) => !filters.every((f) => f(r)));
+                return { data: removed, error: null };
+            }
             return { data: null, error: null };
         };
 
@@ -146,6 +155,13 @@ export function createMockSupabase(opts: MockSupabaseOptions): MockSupabaseClien
                 return builder;
             },
             update: (patch) => { mode = 'update'; pendingPatch = patch; return builder; },
+            delete: () => { mode = 'delete'; return builder; },
+            match: (criteria) => {
+                for (const [col, val] of Object.entries(criteria)) {
+                    filters.push((r) => r[col] === val);
+                }
+                return builder;
+            },
             eq: (col, val) => { filters.push((r) => r[col] === val); return builder; },
             in: (col, vals) => { filters.push((r) => vals.includes(r[col])); return builder; },
             neq: (col, val) => { filters.push((r) => r[col] !== val); return builder; },
