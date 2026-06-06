@@ -3,7 +3,10 @@ import { NextRequest } from 'next/server';
 
 jest.mock('stripe', () =>
   jest.fn().mockImplementation(() => ({
-    customers: { create: jest.fn().mockResolvedValue({ id: 'cus_test' }) },
+    customers: {
+      create: jest.fn().mockResolvedValue({ id: 'cus_test' }),
+      retrieve: jest.fn().mockResolvedValue({ id: 'cus_existing' }),
+    },
     checkout: {
       sessions: {
         create: jest.fn().mockResolvedValue({ url: 'https://checkout.stripe.com/pay/test' }),
@@ -44,6 +47,7 @@ function makeAdminMock(singleResult: unknown) {
 beforeEach(() => {
   jest.clearAllMocks();
   stripeInstance.customers.create.mockResolvedValue({ id: 'cus_test' });
+  stripeInstance.customers.retrieve.mockResolvedValue({ id: 'cus_existing' });
   stripeInstance.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.stripe.com/pay/test' });
 });
 

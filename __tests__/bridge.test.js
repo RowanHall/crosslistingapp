@@ -4,7 +4,7 @@ global.chrome = {
     }
 };
 
-const { performInPageFetch } = require('../bridge');
+const { performInPageFetch } = require('../extension/scripts/bridge');
 
 global.fetch = jest.fn();
 
@@ -28,7 +28,7 @@ describe('Bridge Script - performInPageFetch', () => {
             expect.stringContaining('https://webapi.depop.com/api/v3/shop/user123/products/'),
             expect.anything()
         );
-        expect(result).toEqual({ success: true, products: mockProducts });
+        expect(result).toEqual({ success: true, products: mockProducts, count: mockProducts.length });
     });
 
     it('handles fetch errors', async () => {

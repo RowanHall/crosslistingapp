@@ -1116,3 +1116,7 @@ async function processNextDepopListing(lastSuccess, lastError) {
         }
     }, 60000);
 }
+
+if (typeof module !== 'undefined') {
+    module.exports = { handleDepopSync };
+}

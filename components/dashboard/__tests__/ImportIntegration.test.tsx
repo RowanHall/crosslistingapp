@@ -19,14 +19,22 @@ const mockChrome = {
       addListener: jest.fn(),
     },
     sendMessage: jest.fn(),
+    lastError: null as any,
   },
   tabs: {
     query: jest.fn(),
     sendMessage: jest.fn(),
+    create: jest.fn(),
   },
   webRequest: {
     onBeforeSendHeaders: { addListener: jest.fn() },
     onHeadersReceived: { addListener: jest.fn() },
+  },
+  storage: {
+    local: {
+      get: jest.fn(),
+      set: jest.fn(),
+    },
   },
 };
 
@@ -60,24 +68,14 @@ require('../../../extension/scripts/bridge');
 // Mock tabs.query to return a valid Depop tab
 mockChrome.tabs.query.mockResolvedValue([{ id: 123, url: 'https://depop.com/myshop' }]);
 
-// Mock tabs.sendMessage to route to the BRIDGE listener
-mockChrome.tabs.sendMessage.mockImplementation(async (tabId, message) => {
-  // console.log(`[BUS] Background -> Bridge (Tab ${tabId}):`, message);
-  
+// Background calls chrome.tabs.sendMessage(tabId, message, callback). Route the
+// message through the bridge listener and pass the response back via callback.
+mockChrome.tabs.sendMessage.mockImplementation((tabId: number, message: any, callback: (res: any) => void) => {
   if (!bridgeListener) {
     throw new Error("Bridge listener not attached!");
   }
-
-  // Bridge listener signature: (request, sender, sendResponse) -> boolean
-  // Bridge returns generic Promise or calls sendResponse. 
-  // In bridge.js, it returns true and calls sendResponse async.
-  // We need to promisify this for the Background script (which awaits tabs.sendMessage)
-  
-  return new Promise((resolve) => {
-    const sendResponse = (response: any) => {
-      resolve(response);
-    };
-    bridgeListener(message, { tab: { id: tabId } }, sendResponse);
+  bridgeListener(message, { tab: { id: tabId } }, (response: any) => {
+    if (typeof callback === 'function') callback(response);
   });
 });
 
@@ -96,14 +94,11 @@ describe('Import Flow Integration Test', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (global.fetch as jest.Mock).mockReset();
-    
-    // Set required state in Background (User ID is needed for sync)
-    // accessible via the exported helper from background.js
-    if (backgroundScript.setLatestUserId) {
-      backgroundScript.setLatestUserId('12345');
-    } else {
-      console.warn("setLatestUserId not found on background exports");
-    }
+
+    // Background reads the Depop user ID from chrome.storage.local now
+    mockChrome.storage.local.get.mockResolvedValue({ depop_user_id: '12345' });
+    mockChrome.tabs.query.mockResolvedValue([{ id: 123, url: 'https://depop.com/myshop' }]);
+    mockChrome.runtime.lastError = null;
   });
 
   test('Full Happy Path: Button Click -> Background -> Bridge -> Fetch -> UI Update', async () => {
@@ -116,7 +111,7 @@ describe('Import Flow Integration Test', () => {
 
     // 2. Render Component
     render(<ImportButton />);
-    const button = screen.getByText('Import from Depop');
+    const button = screen.getByText('Sync from Depop');
 
     // 3. Spy on window.parent.postMessage to act as the "Content Script Relay"
     // The component calls window.parent.postMessage({ action: 'SYNC_DEPOP' }, '*')
@@ -125,7 +120,7 @@ describe('Import Flow Integration Test', () => {
 
         if (message.action === 'SYNC_DEPOP') {
             // RELAY LOGIC: Transform and forward to Background
-            const bgMessage = { type: 'SYNC_DEPOP' };
+            const bgMessage = { action: 'SYNC_DEPOP' };
             
             // Call Background Listener
             // signature: (request, sender, sendResponse)
@@ -154,7 +149,7 @@ describe('Import Flow Integration Test', () => {
     // 5. Verification Steps
     
     // A. Verify Button text changes to loading
-    expect(screen.getByText('Importing...')).toBeInTheDocument();
+    expect(screen.getByText('Syncing...')).toBeInTheDocument();
 
     // B. Verify Fetch was called (Bridge Logic executed)
     // Wait for the async chain to complete
@@ -180,12 +175,12 @@ describe('Import Flow Integration Test', () => {
 
     // 2. Render Component
     render(<ImportButton />);
-    const button = screen.getByText('Import from Depop');
+    const button = screen.getByText('Sync from Depop');
 
     // 3. Spy on window.parent.postMessage (Relay Logic)
     const messageSpy = jest.spyOn(window.parent, 'postMessage').mockImplementation((message: any) => {
         if (message.action === 'SYNC_DEPOP') {
-            const bgMessage = { type: 'SYNC_DEPOP' };
+            const bgMessage = { action: 'SYNC_DEPOP' };
             
             const sendResponse = (response: any) => {
                 const event = new MessageEvent('message', {
@@ -207,7 +202,7 @@ describe('Import Flow Integration Test', () => {
     // 5. Verification Steps
     
     // A. Verify Loading State appears initially
-    expect(screen.getByText('Importing...')).toBeInTheDocument();
+    expect(screen.getByText('Syncing...')).toBeInTheDocument();
 
     // B. Verify Fetch was attempted
     await waitFor(() => {
@@ -221,8 +216,8 @@ describe('Import Flow Integration Test', () => {
 
     // D. Verify Button Resets (Loading state removed)
     await waitFor(() => {
-        expect(screen.getByText('Import from Depop')).toBeInTheDocument();
-        expect(screen.queryByText('Importing...')).not.toBeInTheDocument();
+        expect(screen.getByText('Sync from Depop')).toBeInTheDocument();
+        expect(screen.queryByText('Syncing...')).not.toBeInTheDocument();
     });
 
     // Clean up spy

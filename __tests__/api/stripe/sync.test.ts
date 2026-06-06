@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { NextRequest } from 'next/server';
 
 jest.mock('stripe', () =>
   jest.fn().mockImplementation(() => ({
@@ -24,6 +25,9 @@ beforeAll(() => {
   stripeInstance = (Stripe as unknown as jest.Mock).mock.results[0].value;
 });
 
+const makeRequest = () =>
+  new NextRequest(new URL('http://localhost:3000/api/stripe/sync'), { method: 'POST' });
+
 function makeAdminMock(singleResult: unknown) {
   const mockSingle = jest.fn().mockResolvedValue({ data: singleResult });
   const mockEq = jest.fn(() => ({ single: mockSingle }));
@@ -45,7 +49,7 @@ describe('POST /api/stripe/sync', () => {
       auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null } }) },
     } as any);
 
-    const res = await POST();
+    const res = await POST(makeRequest());
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toBe('Unauthorized');
@@ -57,7 +61,7 @@ describe('POST /api/stripe/sync', () => {
     } as any);
     mockCreateAdminClient.mockReturnValue(makeAdminMock(null) as any);
 
-    const res = await POST();
+    const res = await POST(makeRequest());
     expect(res.status).toBe(404);
   });
 
@@ -67,7 +71,7 @@ describe('POST /api/stripe/sync', () => {
     } as any);
     mockCreateAdminClient.mockReturnValue(makeAdminMock({ stripe_customer_id: 'cus_test' }) as any);
 
-    const res = await POST();
+    const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('inactive');
@@ -80,10 +84,14 @@ describe('POST /api/stripe/sync', () => {
     const admin = makeAdminMock({ stripe_customer_id: 'cus_test' });
     mockCreateAdminClient.mockReturnValue(admin as any);
     stripeInstance.subscriptions.list.mockResolvedValue({
-      data: [{ id: 'sub_123', status: 'active', current_period_end: 1800000000 }],
+      data: [{
+        id: 'sub_123',
+        status: 'active',
+        items: { data: [{ current_period_end: 1800000000 }] },
+      }],
     });
 
-    await POST();
+    await POST(makeRequest());
     expect(admin.mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ stripe_subscription_id: 'sub_123', status: 'active' })
     );
@@ -95,10 +103,14 @@ describe('POST /api/stripe/sync', () => {
     } as any);
     mockCreateAdminClient.mockReturnValue(makeAdminMock({ stripe_customer_id: 'cus_test' }) as any);
     stripeInstance.subscriptions.list.mockResolvedValue({
-      data: [{ id: 'sub_123', status: 'active', current_period_end: 1800000000 }],
+      data: [{
+        id: 'sub_123',
+        status: 'active',
+        items: { data: [{ current_period_end: 1800000000 }] },
+      }],
     });
 
-    const res = await POST();
+    const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('active');
